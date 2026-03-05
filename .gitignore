@@ -1,0 +1,8 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+data/raw/polymarket/snapshots/
+data/raw/polymarket/fetch_log.jsonl
+data/raw/polymarket/paper/

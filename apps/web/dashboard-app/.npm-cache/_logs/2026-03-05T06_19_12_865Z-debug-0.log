@@ -1,0 +1,18 @@
+0 verbose cli /opt/homebrew/Cellar/node@22/22.22.0/bin/node /opt/homebrew/opt/node@22/bin/npm
+1 info using npm@10.9.4
+2 info using node@v22.22.0
+3 silly config load:file:/opt/homebrew/Cellar/node@22/22.22.0/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/chenweibin/Documents/saima polymarkt/apps/web/dashboard-app/.npmrc
+5 silly config load:file:/Users/chenweibin/.npmrc
+6 silly config load:file:/opt/homebrew/etc/npmrc
+7 verbose title npm run build
+8 verbose argv "run" "build" "--cache" ".npm-cache"
+9 verbose logfile logs-max:10 dir:/Users/chenweibin/Documents/saima polymarkt/apps/web/dashboard-app/.npm-cache/_logs/2026-03-05T06_19_12_865Z-
+10 verbose logfile /Users/chenweibin/Documents/saima polymarkt/apps/web/dashboard-app/.npm-cache/_logs/2026-03-05T06_19_12_865Z-debug-0.log
+11 silly logfile done cleaning log files
+12 verbose cwd /Users/chenweibin/Documents/saima polymarkt/apps/web/dashboard-app
+13 verbose os Darwin 25.3.0
+14 verbose node v22.22.0
+15 verbose npm  v10.9.4
+16 verbose exit 0
+17 info ok

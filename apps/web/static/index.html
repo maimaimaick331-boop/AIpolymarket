@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polymarket 交易中台</title>
+  <style>
+    :root {
+      --bg: #ecf3fb;
+      --surface: #ffffff;
+      --ink: #152033;
+      --muted: #5a6f8f;
+      --line: #d4e0ef;
+      --brand: #1f4e7a;
+      --brand-2: #0f7f74;
+      --danger: #c2410c;
+      --warn-bg: #fff6ed;
+      --warn-line: #fed7aa;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(860px 320px at 8% -6%, #d8ecff 0, transparent 72%),
+        radial-gradient(960px 420px at 93% -20%, #d8f8eb 0, transparent 78%),
+        var(--bg);
+    }
+
+    .page {
+      max-width: 1260px;
+      margin: 24px auto 34px;
+      padding: 0 16px;
+    }
+
+    .hero {
+      background: linear-gradient(118deg, #183d63 0%, #22537f 52%, #136f76 100%);
+      border-radius: 18px;
+      color: #eaf6ff;
+      box-shadow: 0 16px 36px rgba(20, 54, 89, 0.2);
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1.2fr .9fr;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.15;
+    }
+
+    .hero p {
+      margin: 10px 0 0;
+      color: #d4e9fb;
+      line-height: 1.65;
+      max-width: 760px;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr 1fr;
+      align-content: start;
+    }
+
+    .metric {
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(224, 239, 255, 0.25);
+      backdrop-filter: blur(2px);
+    }
+
+    .metric .n {
+      font-size: 12px;
+      color: #c9e3fa;
+    }
+
+    .metric .v {
+      margin-top: 4px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .hero-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      text-decoration: none;
+      color: #fff;
+      background: #245f92;
+      cursor: pointer;
+    }
+
+    .btn.safe { background: var(--brand-2); }
+    .btn.risk { background: var(--danger); }
+    .btn.ghost {
+      color: #d7ebff;
+      background: transparent;
+      border-color: rgba(215, 235, 255, 0.55);
+    }
+
+    .steps {
+      margin-top: 12px;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--surface);
+      box-shadow: 0 10px 24px rgba(18, 45, 73, 0.08);
+    }
+
+    .ch {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      color: #2a4f74;
+      background: #f5f9ff;
+      font-weight: 700;
+    }
+
+    .tag {
+      border-radius: 999px;
+      border: 1px solid #cfe2f7;
+      background: #eaf3fe;
+      color: #335b83;
+      padding: 2px 8px;
+      font-size: 12px;
+    }
+
+    .cb {
+      padding: 12px;
+      color: var(--muted);
+      line-height: 1.65;
+      min-height: 128px;
+    }
+
+    .board {
+      margin-top: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: 0 10px 24px rgba(18, 45, 73, 0.07);
+      overflow: hidden;
+    }
+
+    .board-head {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f6faff;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .board-title {
+      font-size: 15px;
+      color: #254a70;
+      font-weight: 700;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 900px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #f8fbff;
+      color: #355a80;
+      font-weight: 700;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .mini-btn {
+      display: inline-block;
+      border-radius: 8px;
+      background: #245f92;
+      color: #fff;
+      font-size: 12px;
+      text-decoration: none;
+      padding: 6px 8px;
+    }
+
+    .flow {
+      margin-top: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      padding: 12px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .warn {
+      margin-top: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--warn-line);
+      background: var(--warn-bg);
+      color: #9a3412;
+      padding: 10px 12px;
+      line-height: 1.65;
+    }
+
+    @media (max-width: 1100px) {
+      .hero { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      .hero-side { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 680px) {
+      .hero-side { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 28px; }
+      .page { padding: 0 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div>
+        <h1>Polymarket 量化交易中台</h1>
+        <p>从模型生成策略开始，到模拟盘验证，再到实盘灰度执行。先看行情，再跑策略，再放量资金。所有数据都通过本地服务统一管理。</p>
+      </div>
+      <div class="hero-side">
+        <div class="metric">
+          <div class="n">市场数量</div>
+          <div id="mCount" class="v">-</div>
+        </div>
+        <div class="metric">
+          <div class="n">行情来源</div>
+          <div id="mSource" class="v" style="font-size:18px;">-</div>
+        </div>
+        <div class="metric">
+          <div class="n">最近刷新</div>
+          <div id="mUpdated" class="v" style="font-size:18px;">-</div>
+        </div>
+        <div class="metric">
+          <div class="n">状态</div>
+          <div id="mStatus" class="v" style="font-size:18px;">初始化</div>
+        </div>
+        <div class="hero-actions">
+          <button id="btnReload" class="btn">刷新行情</button>
+          <a class="btn safe" href="/quant">打开全自动量化</a>
+          <a class="btn ghost" href="/paper">打开模拟盘</a>
+          <a class="btn risk" href="/live">打开实盘页</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="steps">
+      <article class="card">
+        <div class="ch">Step 0: 自动量化赛马 <span class="tag">/paper#s0</span></div>
+        <div class="cb">
+          一键循环执行：模型生成策略 -> 自动选择市场 -> 模拟盘运行 -> 绩效筛选 -> 晋级候选。支持实时进度和事件日志。
+          <div><a class="btn safe" href="/paper#s0">进入自动量化</a></div>
+        </div>
+      </article>
+      <article class="card">
+        <div class="ch">Step 1-3: 模型到模拟（单页面） <span class="tag">/paper</span></div>
+        <div class="cb">
+          模型接入、对话生成策略、模拟盘验证已经合并在同一页面。你可以直接手动下单、看交易记录、看胜率和决策报告。
+          <div><a class="btn" href="/paper">进入模拟工作台</a></div>
+        </div>
+      </article>
+      <article class="card">
+        <div class="ch">Step 4: 实盘灰度执行 <span class="tag">/live</span></div>
+        <div class="cb">
+          只有当模拟盘通过你的门槛后，才进入实盘。实盘页包含额度限制、二次确认、风控开关，避免误下单。
+          <div><a class="btn risk" href="/live">进入实盘执行</a></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="board">
+      <div class="board-head">
+        <div>
+          <div class="board-title">Polymarket 实时行情概览</div>
+          <div id="boardHint" class="subtle">加载中...</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Market</th>
+              <th>Token</th>
+              <th>Best Bid</th>
+              <th>Best Ask</th>
+              <th>Spread</th>
+              <th>Tick</th>
+              <th>Min Size</th>
+              <th>Liquidity</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="quoteBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="flow">
+      建议执行顺序：1) 先在 `/paper#s0` 跑自动量化赛马。2) 在 `/paper` 核验交易明细、胜率、回撤与决策报告。3) 达到门槛后再去 `/live` 小资金灰度执行。
+    </section>
+
+    <section class="warn" id="warnBox">
+      风控提示：先验证策略稳定性（收益、回撤、成交质量），再逐步放量。未通过模拟盘门禁时不要直接实盘。
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      rows: [],
+      quotes: {},
+      source: '-',
+      warning: '',
+      updatedAt: '',
+      status: '初始化',
+    };
+
+    function esc(v) {
+      return String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function num(v, d = 4) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n.toFixed(d) : '-';
+    }
+
+    function firstTokenId(m) {
+      const rows = m && Array.isArray(m.token_ids) ? m.token_ids : [];
+      return rows.length ? String(rows[0] || '') : '';
+    }
+
+    function bestBidAskFromBook(book) {
+      if (!book || typeof book !== 'object') return { bid: null, ask: null };
+      const bids = Array.isArray(book.bids) ? book.bids : [];
+      const asks = Array.isArray(book.asks) ? book.asks : [];
+      const bid = bids.length ? Number(bids[0].price) : null;
+      const ask = asks.length ? Number(asks[0].price) : null;
+      return {
+        bid: Number.isFinite(bid) ? bid : null,
+        ask: Number.isFinite(ask) ? ask : null,
+      };
+    }
+
+    async function api(path, options) {
+      const resp = await fetch(path, options);
+      const txt = await resp.text();
+      let body;
+      try { body = txt ? JSON.parse(txt) : {}; } catch { body = txt; }
+      if (!resp.ok) {
+        const msg = typeof body === 'string' ? body : String(body?.detail || txt || `HTTP ${resp.status}`);
+        throw new Error(msg);
+      }
+      return body;
+    }
+
+    function render() {
+      const body = document.getElementById('quoteBody');
+      body.innerHTML = '';
+      (state.rows || []).slice(0, 12).forEach((m, idx) => {
+        const token = firstTokenId(m);
+        if (!token) return;
+        const q = state.quotes[token] || {};
+        const bid = Number.isFinite(q.bid) ? q.bid : (Number.isFinite(Number(m.best_bid)) ? Number(m.best_bid) : null);
+        const ask = Number.isFinite(q.ask) ? q.ask : (Number.isFinite(Number(m.best_ask)) ? Number(m.best_ask) : null);
+        const spread = bid != null && ask != null ? ask - bid : (Number.isFinite(Number(m.spread)) ? Number(m.spread) : null);
+        const tr = document.createElement('tr');
+        const href = `/paper?token=${encodeURIComponent(token)}#sec-trading`;
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>${esc((m.question || '').slice(0, 46))}</td>
+          <td class="mono">${esc(token)}</td>
+          <td>${bid == null ? '-' : num(bid, 4)}</td>
+          <td>${ask == null ? '-' : num(ask, 4)}</td>
+          <td>${spread == null ? '-' : num(spread, 4)}</td>
+          <td>${m.order_price_min_tick_size == null ? '-' : num(m.order_price_min_tick_size, 4)}</td>
+          <td>${m.order_min_size == null ? '-' : num(m.order_min_size, 2)}</td>
+          <td>${esc(String(m.liquidity ?? '-'))}</td>
+          <td><a class="mini-btn" href="${href}">去模拟下单</a></td>
+        `;
+        body.appendChild(tr);
+      });
+
+      if (!body.innerHTML) {
+        body.innerHTML = '<tr><td colspan="10" class="subtle">暂无可显示行情，请检查网络或点击“刷新行情”。</td></tr>';
+      }
+
+      document.getElementById('mCount').textContent = String((state.rows || []).length);
+      document.getElementById('mSource').textContent = state.source || '-';
+      document.getElementById('mUpdated').textContent = state.updatedAt ? state.updatedAt.slice(11, 19) : '-';
+      document.getElementById('mStatus').textContent = state.status || '-';
+      document.getElementById('boardHint').textContent = `来源=${state.source || '-'} | warning=${state.warning || '无'} | 自动刷新=15s`;
+
+      const warn = document.getElementById('warnBox');
+      if (state.warning) {
+        warn.textContent = `风控提示：${state.warning}`;
+      } else {
+        warn.textContent = '风控提示：先验证策略稳定性（收益、回撤、成交质量），再逐步放量。未通过模拟盘门禁时不要直接实盘。';
+      }
+    }
+
+    async function refreshMarkets() {
+      state.status = '刷新中';
+      render();
+      try {
+        const markets = await api('/api/paper/markets?limit=20');
+        state.rows = Array.isArray(markets.rows) ? markets.rows : [];
+        state.source = String(markets.source || 'gamma');
+        state.warning = String(markets.warning || '');
+        state.quotes = {};
+
+        const jobs = state.rows.slice(0, 12).map(async (m) => {
+          const token = firstTokenId(m);
+          if (!token) return;
+          try {
+            const book = await api(`/api/paper/orderbook/${token}`);
+            const ba = bestBidAskFromBook(book);
+            state.quotes[token] = { bid: ba.bid, ask: ba.ask };
+          } catch {
+            state.quotes[token] = { bid: null, ask: null };
+          }
+        });
+        await Promise.all(jobs);
+        state.updatedAt = String(markets.updated_at_utc || new Date().toISOString());
+        state.status = '在线';
+      } catch (err) {
+        state.status = `异常: ${String(err).slice(0, 24)}`;
+        state.warning = String(err);
+      }
+      render();
+    }
+
+    document.getElementById('btnReload').addEventListener('click', () => {
+      refreshMarkets().catch(() => {});
+    });
+
+    (async () => {
+      await refreshMarkets();
+      setInterval(() => {
+        refreshMarkets().catch(() => {});
+      }, 15000);
+    })();
+  </script>
+</body>
+</html>

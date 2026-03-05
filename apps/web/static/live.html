@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>实盘执行控制台</title>
+  <style>
+    :root {
+      --bg: #eef3f9;
+      --ink: #1a2738;
+      --muted: #60758f;
+      --line: #d3deea;
+      --panel: #ffffff;
+      --deep: #173653;
+      --deep2: #2e5a83;
+      --safe: #0f766e;
+      --risk: #b53434;
+      --warn: #b26a00;
+      --ok: #157347;
+      --bad: #c0392b;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(900px 260px at 8% -8%, #d9ecff 0, transparent 70%),
+        radial-gradient(900px 360px at 86% -15%, #ffe8d7 0, transparent 76%),
+        var(--bg);
+    }
+
+    .page {
+      max-width: 1560px;
+      margin: 16px auto 28px;
+      padding: 0 14px;
+    }
+
+    .hero {
+      border-radius: 16px;
+      padding: 16px;
+      color: #eef8ff;
+      background: linear-gradient(120deg, #173653 0%, #2d5073 48%, #5b2f2f 100%);
+      box-shadow: 0 14px 30px rgba(24, 47, 74, .2);
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .hero h1 { margin: 0; font-size: 30px; }
+    .hero p { margin: 8px 0 0; max-width: 820px; color: #d8e9f8; line-height: 1.6; }
+
+    .nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      color: #eaf4ff;
+      border: 1px solid rgba(255,255,255,.24);
+      background: rgba(255,255,255,.12);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 9px;
+      padding: 8px 12px;
+      color: #fff;
+      background: var(--deep2);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn.safe { background: var(--safe); }
+    .btn.risk { background: var(--risk); }
+
+    .section {
+      margin-top: 12px;
+      background: rgba(255,255,255,.52);
+      border: 1px solid #d8e2ee;
+      border-radius: 14px;
+      padding: 12px;
+      backdrop-filter: blur(3px);
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .section-title h2 { margin: 0; font-size: 16px; color: #224969; }
+    .section-title small { color: var(--muted); font-size: 12px; }
+
+    .grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .g3 { grid-template-columns: 1fr 1fr 1fr; }
+    .g2 { grid-template-columns: 1fr 1fr; }
+    .two-col { display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 18px rgba(25, 52, 79, .06);
+    }
+
+    .ph {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f6faff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ph strong { font-size: 13px; color: #2f567b; }
+    .pb { padding: 12px; }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: #e8f2ff;
+      color: #2b5175;
+      border: 1px solid #d4e6fa;
+    }
+
+    .tag.on { background: #d6f5df; color: #1f6f3a; border-color: #b9e8c8; }
+    .tag.off { background: #ffe1e1; color: #8d2a2a; border-color: #f5c2c2; }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    input, select, textarea {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #88abcf;
+      box-shadow: 0 0 0 2px rgba(44, 96, 155, .12);
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fff;
+      background: var(--deep2);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary { background: #355c7d; }
+    button.danger { background: var(--risk); }
+
+    .kpi {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .k {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      background: #fcfeff;
+      min-height: 62px;
+    }
+
+    .k .n { font-size: 11px; color: var(--muted); }
+    .k .v { font-size: 19px; margin-top: 3px; font-weight: 700; }
+
+    .ok { color: var(--ok); }
+    .bad { color: var(--bad); }
+    .warn { color: var(--warn); }
+
+    .mono { font-family: var(--mono); }
+
+    .table-wrap {
+      max-height: 320px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #e8eef5;
+      text-align: left;
+      padding: 8px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f5f9fd;
+      position: sticky;
+      top: 0;
+      color: #355a7f;
+      z-index: 1;
+    }
+
+    .log {
+      height: 240px;
+      overflow: auto;
+      border: 1px solid #14273f;
+      border-radius: 10px;
+      padding: 8px;
+      background: #0f1b2d;
+      color: #d7e3f5;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    @media (max-width: 1260px) {
+      .g3, .g2, .two-col, .kpi, .split { grid-template-columns: 1fr; }
+      .hero-top { flex-direction: column; }
+      .nav { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-top">
+        <div>
+          <h1>实盘执行控制台</h1>
+          <p>这是高风险页面：接真实账户、真实订单、真实资金。请先在模拟盘确认策略稳定盈利，再来这里灰度执行。</p>
+        </div>
+        <div class="nav">
+          <span class="pill">模式: <strong>Live</strong></span>
+          <button id="btnRefresh" class="btn">刷新全部</button>
+          <a href="/" class="pill">入口</a>
+          <a href="/paper" class="pill">模拟盘</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>系统总览</h2>
+        <small>优先确认实盘开关、账户状态和风控上限。</small>
+      </div>
+      <div class="grid g3">
+        <article class="panel"><div class="ph"><strong>系统状态</strong><span class="tag">Live Safety</span></div><div class="pb" id="statusBox"></div></article>
+        <article class="panel"><div class="ph"><strong>账户余额</strong><span class="tag">Wallet</span></div><div class="pb" id="balanceBox">加载中...</div></article>
+        <article class="panel">
+          <div class="ph"><strong>快速操作</strong><span class="tag">Operations</span></div>
+          <div class="pb toolbar">
+            <button class="secondary" id="btnGenerate">生成策略(6)</button>
+            <button class="danger" id="btnCancelAll">全撤单(实盘)</button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>执行控制</h2>
+        <small>自动 Bot 与手动下单共用一套风控确认。</small>
+      </div>
+      <div class="two-col">
+        <article class="panel">
+          <div class="ph"><strong>自动交易 Bot（真实）</strong><span id="botStatusText" class="tag">状态未知</span></div>
+          <div class="pb">
+            <div class="toolbar">
+              <input id="botToken" placeholder="token_id（必填）" style="min-width:340px;" />
+              <input id="botInterval" placeholder="间隔秒(默认20)" />
+              <button id="btnBotStart">启动 Bot</button>
+              <button id="btnBotStop" class="danger">停止 Bot</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="ph"><strong>手动下单（真实）</strong><span class="tag">Manual Order</span></div>
+          <div class="pb">
+            <div class="split">
+              <div>
+                <div class="toolbar">
+                  <input id="orderStrategy" placeholder="strategy_id(可空)" />
+                  <input id="orderToken" placeholder="token_id" style="min-width:260px;" />
+                  <select id="orderSide"><option value="buy">BUY</option><option value="sell">SELL</option></select>
+                </div>
+                <div class="toolbar">
+                  <input id="orderPrice" placeholder="限价 price" />
+                  <input id="orderSize" placeholder="数量 size" />
+                  <select id="orderType"><option>GTC</option><option>FOK</option><option>FAK</option><option>GTD</option></select>
+                </div>
+                <div class="toolbar">
+                  <input id="marketAmount" placeholder="市价 amount(USDC)" />
+                  <label><input id="confirmLive" type="checkbox" /> 确认实盘</label>
+                </div>
+                <div class="toolbar">
+                  <button id="btnLimit">下限价单</button>
+                  <button class="secondary" id="btnMarket">下市价单</button>
+                </div>
+              </div>
+              <div>
+                <div class="tag">返回结果</div>
+                <textarea id="orderResp" style="width:100%;height:190px;"></textarea>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>市场与策略</h2>
+        <small>查看可交易市场，跟踪策略状态与参数。</small>
+      </div>
+      <div class="grid g2">
+        <article class="panel">
+          <div class="ph"><strong>实时市场（前 50）</strong><span class="tag">Markets</span></div>
+          <div class="pb">
+            <div class="table-wrap"><table><thead><tr><th>#</th><th>ID</th><th>问题</th><th>活跃</th><th>流动性</th><th>TokenIds</th></tr></thead><tbody id="marketsBody"></tbody></table></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="ph"><strong>策略列表（实时参数）</strong><span class="tag">Strategies</span></div>
+          <div class="pb">
+            <div class="table-wrap"><table><thead><tr><th>ID</th><th>名称</th><th>类型</th><th>来源</th><th>参数</th><th>状态</th><th>操作</th></tr></thead><tbody id="strategiesBody"></tbody></table></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>账户执行数据</h2>
+        <small>订单/成交统计与策略晋级门槛。</small>
+      </div>
+      <div class="grid g2">
+        <article class="panel">
+          <div class="ph"><strong>订单与成交（真实账户）</strong><span class="tag">Account Trades</span></div>
+          <div class="pb">
+            <div class="kpi">
+              <div class="k"><div class="n">Open Orders</div><div class="v" id="kOpen">-</div></div>
+              <div class="k"><div class="n">Recent Trades</div><div class="v" id="kTrades">-</div></div>
+              <div class="k"><div class="n">Live Enabled</div><div class="v" id="kLive">-</div></div>
+              <div class="k"><div class="n">Max Order USDC</div><div class="v" id="kMax">-</div></div>
+            </div>
+            <div style="margin-top:10px;" class="table-wrap"><table><thead><tr><th>类型</th><th>详情</th></tr></thead><tbody id="acctBody"></tbody></table></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="ph"><strong>策略绩效与晋级门禁</strong><span class="tag">Promotion Gate</span></div>
+          <div class="pb">
+            <div class="toolbar">
+              <input id="thMinPnl" placeholder="min_pnl" value="0" />
+              <input id="thMaxDd" placeholder="max_dd_pct" value="1.5" />
+              <input id="thMinTrades" placeholder="min_trades" value="20" />
+              <input id="thMinWinRate" placeholder="min_win_rate" value="0.45" />
+              <button id="btnPerf" class="secondary">刷新绩效</button>
+              <button id="btnPerfGate">筛选晋级候选</button>
+            </div>
+            <div style="margin-bottom:8px;" id="promotionInfo" class="mono"></div>
+            <div class="table-wrap"><table><thead><tr><th>strategy_id</th><th>trades</th><th>turnover</th><th>pnl</th><th>max_dd%</th><th>win_rate</th><th>net_pos</th><th>操作</th></tr></thead><tbody id="perfBody"></tbody></table></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>事件日志</h2>
+        <small>按 strategy_id 快速排障与归因。</small>
+      </div>
+      <article class="panel">
+        <div class="ph"><strong>策略交易日志（按 strategy_id 追踪）</strong><span class="tag">Logs</span></div>
+        <div class="pb">
+          <div class="toolbar"><input id="logFilter" placeholder="按 strategy_id 过滤" /><button id="btnLogs" class="secondary">刷新日志</button></div>
+          <div id="logBox" class="log"></div>
+        </div>
+      </article>
+    </section>
+  </div>
+  <script>
+    const state = { status: null, bot: null, markets: [], strategies: [], logs: [], perf: [], account: { orders: null, trades: null, balance: null } };
+
+    function j(x) { return JSON.stringify(x ?? {}, null, 2); }
+    async function api(path, options) {
+      const resp = await fetch(path, options);
+      const txt = await resp.text();
+      let body;
+      try { body = JSON.parse(txt); } catch { body = txt; }
+      if (!resp.ok) throw new Error(typeof body === 'string' ? body : j(body));
+      return body;
+    }
+
+    function renderStatus() {
+      const s = state.status || {};
+      const on = !!s.live_trading_enabled;
+      document.getElementById('statusBox').innerHTML = `
+        <div>实盘开关: <span class="tag ${on ? 'on' : 'off'}">${on ? '开启' : '关闭'}</span></div>
+        <div>二次确认: <span class="tag">${s.live_force_ack ? '启用' : '关闭'}</span></div>
+        <div>Host: <span class="mono">${s.host || '-'}</span></div>
+        <div>Chain: <b>${s.chain_id ?? '-'}</b> | SignatureType: <b>${s.signature_type ?? '-'}</b></div>
+        <div>私钥: ${s.has_private_key ? '已配置' : '未配置'} | Funder: ${s.has_funder ? '已配置' : '未配置'} | API Key: ${s.has_api_creds ? '已配置' : '未配置'}</div>
+      `;
+      document.getElementById('kLive').textContent = on ? 'ON' : 'OFF';
+      document.getElementById('kMax').textContent = s.live_max_order_usdc ?? '-';
+    }
+
+    function renderBotStatus() {
+      const b = state.bot || {};
+      const el = document.getElementById('botStatusText');
+      const txt = b.running ? `运行中 token=${b.token_id || '-'} tick=${b.tick || 0}` : '已停止';
+      el.textContent = txt;
+      el.className = `tag ${b.running ? 'on' : 'off'}`;
+    }
+
+    function renderMarkets() {
+      const body = document.getElementById('marketsBody');
+      body.innerHTML = '';
+      state.markets.forEach((m, i) => {
+        const tr = document.createElement('tr');
+        const tokenIds = String(m.clobTokenIds || '').slice(0, 80);
+        tr.innerHTML = `<td>${i + 1}</td><td class="mono">${m.id ?? ''}</td><td>${m.question ?? ''}</td><td>${m.active ? 'Y' : 'N'}</td><td>${m.liquidity ?? '-'}</td><td class="mono">${tokenIds}</td>`;
+        body.appendChild(tr);
+      });
+    }
+
+    function renderStrategies() {
+      const body = document.getElementById('strategiesBody');
+      body.innerHTML = '';
+      state.strategies.forEach((s) => {
+        const tr = document.createElement('tr');
+        const params = Object.entries(s.params || {}).map(([k, v]) => `${k}=${v}`).join(' | ');
+        tr.innerHTML = `
+          <td class="mono">${s.strategy_id}</td>
+          <td>${s.name}</td>
+          <td>${s.strategy_type}</td>
+          <td>${s.source || '-'}</td>
+          <td class="mono">${params}</td>
+          <td><span class="tag ${s.enabled ? 'on' : 'off'}">${s.enabled ? '启用' : '停用'}</span></td>
+          <td><button data-id="${s.strategy_id}" data-on="${s.enabled ? '1' : '0'}" class="secondary toggleBtn">切换</button></td>
+        `;
+        body.appendChild(tr);
+      });
+
+      document.querySelectorAll('.toggleBtn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const on = btn.getAttribute('data-on') === '1';
+          await api('/api/strategies/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ strategy_id: id, enabled: !on }),
+          });
+          await loadStrategies();
+        });
+      });
+    }
+
+    function renderAccount() {
+      const balance = state.account.balance;
+      const orders = state.account.orders;
+      const trades = state.account.trades;
+      document.getElementById('balanceBox').textContent = j(balance);
+      const openCount = Array.isArray(orders?.data) ? orders.data.length : (Array.isArray(orders) ? orders.length : 0);
+      const tradeCount = Array.isArray(trades?.data) ? trades.data.length : (Array.isArray(trades) ? trades.length : 0);
+      document.getElementById('kOpen').textContent = openCount;
+      document.getElementById('kTrades').textContent = tradeCount;
+      const body = document.getElementById('acctBody');
+      body.innerHTML = `<tr><td>open-orders</td><td><pre>${j(orders)}</pre></td></tr><tr><td>trades</td><td><pre>${j(trades)}</pre></td></tr>`;
+    }
+
+    function renderLogs() {
+      const box = document.getElementById('logBox');
+      const kw = document.getElementById('logFilter').value.trim();
+      const rows = state.logs.filter((x) => !kw || String(x.strategy_id || '').includes(kw));
+      box.textContent = rows.map((x) => j(x)).join('\n\n');
+    }
+
+    function thresholds() {
+      return {
+        min_pnl: Number(document.getElementById('thMinPnl').value || 0),
+        max_dd_pct: Number(document.getElementById('thMaxDd').value || 1.5),
+        min_trades: Number(document.getElementById('thMinTrades').value || 20),
+        min_win_rate: Number(document.getElementById('thMinWinRate').value || 0.45),
+      };
+    }
+
+    function renderPerf() {
+      const body = document.getElementById('perfBody');
+      body.innerHTML = '';
+      state.perf.forEach((r) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${r.strategy_id}</td>
+          <td>${r.trades}</td>
+          <td>${Number(r.turnover || 0).toFixed(4)}</td>
+          <td class="${Number(r.realized_pnl || 0) >= 0 ? 'ok' : 'bad'}">${Number(r.realized_pnl || 0).toFixed(4)}</td>
+          <td>${Number(r.max_drawdown_pct || 0).toFixed(3)}</td>
+          <td>${(Number(r.win_rate || 0) * 100).toFixed(1)}%</td>
+          <td>${Number(r.net_position || 0).toFixed(4)}</td>
+          <td><button class="approveBtn" data-id="${r.strategy_id}">批准晋级</button></td>
+        `;
+        body.appendChild(tr);
+      });
+
+      document.querySelectorAll('.approveBtn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const th = thresholds();
+          const resp = await api('/api/performance/promotion/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ strategy_id: id, ...th }),
+          });
+          document.getElementById('promotionInfo').textContent = `晋级成功: strategy_id=${resp.strategy_id} file=${resp.file}`;
+          await Promise.all([loadLogs(), loadPerf()]);
+        });
+      });
+    }
+
+    async function loadStatus() {
+      state.status = await api('/api/status');
+      renderStatus();
+    }
+    async function loadBotStatus() {
+      try {
+        state.bot = await api('/api/bot/status');
+      } catch (e) {
+        state.bot = { running: false, error: String(e) };
+      }
+      renderBotStatus();
+    }
+    async function loadMarkets() {
+      const resp = await api('/api/markets?limit=50');
+      state.markets = resp.rows || [];
+      renderMarkets();
+    }
+    async function loadStrategies() {
+      const resp = await api('/api/strategies');
+      state.strategies = resp.rows || [];
+      renderStrategies();
+    }
+    async function loadLogs() {
+      const resp = await api('/api/strategies/logs?limit=300');
+      state.logs = resp.rows || [];
+      renderLogs();
+    }
+    async function loadPerf() {
+      const resp = await api('/api/performance/strategies?limit=5000');
+      state.perf = resp.rows || [];
+      renderPerf();
+    }
+    async function loadAccount() {
+      if (!state.status?.has_api_creds) {
+        const msg = '未配置实盘 API 凭证，已跳过账户查询。';
+        state.account.balance = { ok: false, disabled: true, reason: msg };
+        state.account.orders = { ok: false, disabled: true, reason: msg, rows: [] };
+        state.account.trades = { ok: false, disabled: true, reason: msg, rows: [] };
+        renderAccount();
+        return;
+      }
+      try { state.account.balance = await api('/api/account/balance'); } catch (e) { state.account.balance = { error: String(e) }; }
+      try { state.account.orders = await api('/api/account/open-orders'); } catch (e) { state.account.orders = { error: String(e) }; }
+      try { state.account.trades = await api('/api/account/trades'); } catch (e) { state.account.trades = { error: String(e) }; }
+      renderAccount();
+    }
+
+    async function refreshAll() {
+      await loadStatus();
+      await Promise.all([loadBotStatus(), loadMarkets(), loadStrategies(), loadLogs(), loadPerf(), loadAccount()]);
+    }
+
+    document.getElementById('btnRefresh').addEventListener('click', refreshAll);
+    document.getElementById('btnLogs').addEventListener('click', loadLogs);
+    document.getElementById('btnPerf').addEventListener('click', loadPerf);
+    document.getElementById('btnPerfGate').addEventListener('click', async () => {
+      const th = thresholds();
+      const q = new URLSearchParams({
+        min_pnl: String(th.min_pnl),
+        max_dd_pct: String(th.max_dd_pct),
+        min_trades: String(th.min_trades),
+        min_win_rate: String(th.min_win_rate),
+      });
+      const resp = await api(`/api/performance/promotion?${q.toString()}`);
+      const ids = (resp.rows || []).map((x) => x.strategy_id).join(', ');
+      document.getElementById('promotionInfo').textContent = `符合晋级数=${resp.count} strategy_ids=[${ids}]`;
+    });
+
+    document.getElementById('btnGenerate').addEventListener('click', async () => {
+      await api('/api/strategies/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: 6, seed: Date.now() % 1000000 }) });
+      await Promise.all([loadStrategies(), loadLogs()]);
+    });
+
+    document.getElementById('btnCancelAll').addEventListener('click', async () => {
+      const confirmLive = document.getElementById('confirmLive').checked;
+      const resp = await api(`/api/orders/cancel-all?confirm_live=${confirmLive ? 'true' : 'false'}`, { method: 'POST' });
+      document.getElementById('orderResp').value = j(resp);
+      await Promise.all([loadAccount(), loadLogs()]);
+    });
+
+    document.getElementById('btnBotStart').addEventListener('click', async () => {
+      const token = document.getElementById('botToken').value.trim();
+      const interval = Number(document.getElementById('botInterval').value || 20);
+      const confirmLive = document.getElementById('confirmLive').checked;
+      const resp = await api(`/api/bot/start?confirm_live=${confirmLive ? 'true' : 'false'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token_id: token, interval_sec: interval }),
+      });
+      document.getElementById('orderResp').value = j(resp);
+      await Promise.all([loadBotStatus(), loadLogs()]);
+    });
+
+    document.getElementById('btnBotStop').addEventListener('click', async () => {
+      const confirmLive = document.getElementById('confirmLive').checked;
+      const resp = await api(`/api/bot/stop?confirm_live=${confirmLive ? 'true' : 'false'}`, { method: 'POST' });
+      document.getElementById('orderResp').value = j(resp);
+      await Promise.all([loadBotStatus(), loadLogs()]);
+    });
+
+    document.getElementById('btnLimit').addEventListener('click', async () => {
+      const payload = {
+        strategy_id: document.getElementById('orderStrategy').value.trim(),
+        token_id: document.getElementById('orderToken').value.trim(),
+        side: document.getElementById('orderSide').value,
+        price: Number(document.getElementById('orderPrice').value),
+        size: Number(document.getElementById('orderSize').value),
+        order_type: document.getElementById('orderType').value,
+        confirm_live: document.getElementById('confirmLive').checked,
+      };
+      const resp = await api('/api/orders/limit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      document.getElementById('orderResp').value = j(resp);
+      await Promise.all([loadAccount(), loadLogs()]);
+    });
+
+    document.getElementById('btnMarket').addEventListener('click', async () => {
+      const payload = {
+        strategy_id: document.getElementById('orderStrategy').value.trim(),
+        token_id: document.getElementById('orderToken').value.trim(),
+        side: document.getElementById('orderSide').value,
+        amount: Number(document.getElementById('marketAmount').value),
+        order_type: document.getElementById('orderType').value,
+        confirm_live: document.getElementById('confirmLive').checked,
+      };
+      const resp = await api('/api/orders/market', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      document.getElementById('orderResp').value = j(resp);
+      await Promise.all([loadAccount(), loadLogs()]);
+    });
+
+    refreshAll().catch((e) => {
+      document.getElementById('orderResp').value = String(e);
+    });
+    setInterval(() => { refreshAll().catch(() => {}); }, 5000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,2249 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>模拟盘交易工作台</title>
+  <style>
+    :root {
+      --bg: #eef3f9;
+      --ink: #182333;
+      --muted: #607188;
+      --line: #d4deea;
+      --card: #ffffff;
+      --deep: #163650;
+      --deep2: #2f5a83;
+      --teal: #0f766e;
+      --ok: #157347;
+      --warn: #b26a00;
+      --bad: #c0392b;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(900px 280px at 8% -6%, #d7ebff 0, transparent 70%),
+        radial-gradient(920px 360px at 88% -12%, #d6f4ea 0, transparent 76%),
+        var(--bg);
+    }
+
+    .page {
+      max-width: 1620px;
+      margin: 16px auto 30px;
+      padding: 0 14px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: 16px;
+      padding: 16px;
+      color: #eef9ff;
+      background: linear-gradient(118deg, #173653 0%, #274f78 52%, #1c667b 100%);
+      box-shadow: 0 12px 30px rgba(21, 50, 80, .22);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(120deg, rgba(255,255,255,.12), rgba(255,255,255,0) 40%);
+    }
+
+    .hero-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: .4px;
+    }
+
+    .hero p {
+      margin: 8px 0 0;
+      color: #d5e9f8;
+      max-width: 840px;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.28);
+      background: rgba(255,255,255,.12);
+      color: #e7f3fb;
+      text-decoration: none;
+      font-size: 12px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 9px;
+      padding: 8px 12px;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--deep2);
+    }
+
+    .btn.safe { background: var(--teal); }
+    .btn.warn { background: #b15d14; }
+    .btn.bad { background: #b53434; }
+
+    .toast {
+      margin-top: 10px;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.4;
+      border: 1px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.12);
+      color: #e4f2ff;
+      position: relative;
+      z-index: 1;
+    }
+
+    .toast.ok { border-color: rgba(34,197,94,.55); color: #d6ffe6; }
+    .toast.warn { border-color: rgba(250,204,21,.55); color: #fff5c4; }
+    .toast.bad { border-color: rgba(248,113,113,.62); color: #ffe4e4; }
+
+    .workspace {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 12px;
+      border: 1px solid #d9e4ef;
+      border-radius: 14px;
+      background: #f8fbff;
+      padding: 12px;
+      box-shadow: 0 8px 18px rgba(22, 48, 75, .08);
+    }
+
+    .side-title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: #34597e;
+      font-weight: 700;
+    }
+
+    .workflow-box {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .workflow-item {
+      border: 1px solid #d6e3f0;
+      background: #fff;
+      border-radius: 9px;
+      padding: 7px 8px;
+    }
+
+    .workflow-item .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .workflow-item b {
+      font-size: 12px;
+      color: #2a5074;
+    }
+
+    .workflow-item .detail {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #5f738c;
+      line-height: 1.35;
+    }
+
+    .status-pill {
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      border: 1px solid #d5e6f8;
+      color: #32587d;
+      background: #eaf3fd;
+    }
+
+    .status-pill.ok {
+      border-color: #bfe8cd;
+      background: #def6e7;
+      color: #166d39;
+    }
+
+    .status-pill.todo {
+      border-color: #ecdcae;
+      background: #fff7df;
+      color: #8a5d10;
+    }
+
+    .next-action {
+      margin-top: 6px;
+      border: 1px dashed #c8d9eb;
+      border-radius: 9px;
+      padding: 7px 8px;
+      font-size: 12px;
+      color: #385d80;
+      line-height: 1.45;
+    }
+
+    .flow-nav {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .flow-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-radius: 10px;
+      border: 1px solid #d6e3f0;
+      background: #fff;
+      color: #31577d;
+      text-decoration: none;
+      font-size: 12px;
+      padding: 8px 9px;
+    }
+
+    .flow-link:hover {
+      border-color: #9fbcdc;
+      background: #f3f9ff;
+    }
+
+    .flow-link.active {
+      border-color: #1f4f7d;
+      background: linear-gradient(126deg, #1e486f, #2b618e);
+      color: #fff;
+    }
+
+    .flow-dot {
+      border-radius: 999px;
+      padding: 1px 7px;
+      font-size: 11px;
+      border: 1px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.15);
+      color: inherit;
+    }
+
+    .flow-link.active .flow-dot {
+      background: rgba(255,255,255,.2);
+      border-color: rgba(255,255,255,.45);
+    }
+
+    .side-actions {
+      display: grid;
+      gap: 6px;
+    }
+
+    .side-actions button {
+      width: 100%;
+      text-align: left;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .stage .section:first-child { margin-top: 0; }
+
+    .section {
+      margin-top: 12px;
+      border: 1px solid #d9e3ee;
+      border-radius: 14px;
+      background: rgba(255,255,255,.55);
+      padding: 12px;
+      backdrop-filter: blur(3px);
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .section-title h2 {
+      margin: 0;
+      font-size: 16px;
+      color: #224869;
+      letter-spacing: .2px;
+    }
+
+    .section-title small {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .g2 { grid-template-columns: 1fr 1fr; }
+    .g3 { grid-template-columns: 1fr 1fr 1fr; }
+    .g4 { grid-template-columns: repeat(4, 1fr); }
+    .two-col { display: grid; grid-template-columns: 1.22fr 1fr; gap: 10px; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--card);
+      box-shadow: 0 8px 18px rgba(22, 49, 76, .06);
+    }
+
+    .ph {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #f8fbff 0%, #f4f8fd 100%);
+    }
+
+    .ph strong {
+      font-size: 13px;
+      color: #2e557a;
+    }
+
+    .pb { padding: 12px; }
+
+    .tag {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      background: #e8f2ff;
+      color: #2c5175;
+      border: 1px solid #d6e7fa;
+    }
+
+    .tag.ok {
+      background: #dff6e8;
+      color: #1d6f3a;
+      border-color: #c0e9ce;
+    }
+
+    .tag.bad {
+      background: #ffe2e2;
+      color: #8b2b2b;
+      border-color: #f3c4c4;
+    }
+
+    .kpi {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .k {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      min-height: 66px;
+      background: #fcfeff;
+    }
+
+    .k .n {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      letter-spacing: .2px;
+    }
+
+    .k .v {
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    input, select, textarea {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 9px;
+      font-size: 13px;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #88a9cf;
+      box-shadow: 0 0 0 2px rgba(45, 100, 160, .12);
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--deep2);
+    }
+
+    button:active { transform: translateY(1px); }
+    button.soft { background: #345c7d; }
+    button.warn { background: #b15d14; }
+    button.bad { background: #b53434; }
+
+    .mono { font-family: var(--mono); }
+    .ok { color: var(--ok); }
+    .bad { color: var(--bad); }
+    .warn { color: var(--warn); }
+
+    .subtle {
+      color: #5f738c;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .table-wrap {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 340px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #e8eef5;
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      color: #355a7e;
+      background: #f6f9fd;
+    }
+
+    tr.row-selected {
+      background: #eef6ff;
+    }
+
+    .log {
+      height: 220px;
+      border-radius: 10px;
+      border: 1px solid #14253f;
+      background: #0f1b2d;
+      color: #d9e8ff;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+      padding: 8px;
+      font-family: var(--mono);
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .detail-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      background: #fcfeff;
+    }
+
+    .detail-card b {
+      font-size: 12px;
+      color: #375b80;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .mini-table {
+      max-height: 220px;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 1320px) {
+      .workspace { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+      .g2, .g3, .g4, .kpi, .two-col, .detail-grid, .split { grid-template-columns: 1fr; }
+      .hero-main { flex-direction: column; }
+      .nav-actions { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-main">
+        <div>
+          <h1>模拟盘策略工作台</h1>
+          <p>在同一页面完成模型分配、策略生成、模拟下单、自动 Bot 和绩效评估。所有行情来自 Polymarket 公共 API，所有下单都在本地模拟引擎执行，不触发真实资金。</p>
+        </div>
+        <div class="nav-actions">
+          <span class="pill">模式: <strong>Paper</strong></span>
+          <button id="btnRefresh" class="btn">刷新全局</button>
+          <a href="/" class="pill">入口</a>
+          <a href="/live" class="pill">实盘页</a>
+        </div>
+      </div>
+      <div id="toast" class="toast">准备就绪</div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar">
+        <h3 class="side-title">工作流状态</h3>
+        <div id="workflowBox" class="workflow-box">
+          <div class="workflow-item"><div class="row"><b>加载中</b><span class="status-pill">-</span></div></div>
+        </div>
+        <div id="nextAction" class="next-action">等待载入...</div>
+
+        <h3 class="side-title" style="margin-top:10px;">流程导航</h3>
+        <div class="flow-nav">
+          <a class="flow-link" href="#sec-overview">1. 总览与回放<span id="flow-overview" class="flow-dot">-</span></a>
+          <a class="flow-link" href="#sec-models">2. 模型策略工坊<span id="flow-models" class="flow-dot">-</span></a>
+          <a class="flow-link" href="#sec-strategy">3. 策略中心<span id="flow-strategies" class="flow-dot">-</span></a>
+          <a class="flow-link" href="#sec-trading">4. 模拟交易执行<span id="flow-execution" class="flow-dot">-</span></a>
+          <a class="flow-link" href="#sec-performance">5. 绩效与晋级<span id="flow-evaluation" class="flow-dot">-</span></a>
+          <a class="flow-link" href="#sec-promotion">6. 晋级确认<span id="flow-promotion" class="flow-dot">-</span></a>
+          <a class="flow-link" href="#sec-logs">7. 系统日志<span class="flow-dot">LOG</span></a>
+        </div>
+
+        <h3 class="side-title">快捷动作</h3>
+        <div class="side-actions">
+          <button id="btnQuickRefresh">刷新全局</button>
+          <button id="btnQuickGenerate">快速生成策略</button>
+          <button id="btnQuickStartBot">启动模拟 Bot</button>
+          <button id="btnQuickFilterPromotion" class="warn">筛选晋级候选</button>
+        </div>
+        <div class="hint" style="margin-top:10px;">
+          建议流程：先在模型工坊配置 provider 并生成策略，再在策略中心筛选启用策略，最后在模拟交易和绩效面板观察稳定性。
+        </div>
+      </aside>
+
+      <main class="stage">
+        <section id="sec-overview" class="section">
+          <div class="section-title">
+            <h2>总览与回放</h2>
+            <small>先看数据基线和赛马分布，再进入策略执行。</small>
+          </div>
+          <div class="grid g2">
+            <article class="panel">
+              <div class="ph"><strong>回放摘要与关键指标</strong><span class="tag">Backtest Snapshot</span></div>
+              <div class="pb">
+                <div id="summaryBox" class="subtle">加载中...</div>
+                <div style="margin-top:10px;" class="kpi" id="kpi"></div>
+              </div>
+            </article>
+            <article class="panel">
+              <div class="ph"><strong>赛马概览与排行榜</strong><span class="tag">Race Leaderboard</span></div>
+              <div class="pb">
+                <div id="raceMeta" class="subtle">加载中...</div>
+                <div style="margin-top:10px;" class="table-wrap">
+                  <table>
+                    <thead><tr><th>排名</th><th>ID</th><th>名称</th><th>类型</th><th>Score</th><th>PnL</th><th>DD%</th><th>Win%</th></tr></thead>
+                    <tbody id="raceBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </article>
+          </div>
+          <article class="panel" style="margin-top:10px;">
+            <div class="ph"><strong>Polymarket 实时行情板</strong><span class="tag">Markets & Quotes</span></div>
+            <div class="pb">
+              <div class="subtle" style="margin-bottom:8px;">
+                显示市场基础信息 + token 实时 best bid/ask。点击“选中 token”会自动填入模拟交易台。
+              </div>
+              <div id="marketQuoteMeta" class="mono subtle" style="margin-bottom:8px;">来源=- | warning=-</div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>#</th><th>market</th><th>token</th><th>best bid</th><th>best ask</th><th>spread</th><th>tick</th><th>min_size</th><th>来源</th><th>操作</th></tr></thead>
+                  <tbody id="marketQuoteBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section id="sec-models" class="section">
+          <div class="section-title">
+            <h2>模型策略工坊</h2>
+            <small>支持 OpenClaw 与 OpenAI 兼容接口，多模型路由 + 策略生成。</small>
+          </div>
+          <div class="two-col">
+            <div class="grid" style="gap:10px;">
+              <article class="panel">
+                <div class="ph"><strong>模型仪表盘</strong><span class="tag">Model Health</span></div>
+                <div class="pb">
+                  <div class="toolbar">
+                    <button id="btnModelCheck">检测模型连通性</button>
+                  </div>
+                  <div class="kpi" id="modelKpi"></div>
+                  <div id="modelMeta" class="mono subtle" style="margin-top:8px;"></div>
+                </div>
+              </article>
+
+              <article class="panel">
+                <div class="ph"><strong>模型事件（最近20条）</strong><span class="tag">Events</span></div>
+                <div class="pb">
+                  <div class="table-wrap mini-table">
+                    <table>
+                      <thead><tr><th>时间</th><th>类型</th><th>来源/策略</th><th>详情</th></tr></thead>
+                      <tbody id="modelEventBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div class="grid" style="gap:10px;">
+              <article class="panel">
+                <div class="ph"><strong>模型分配接口</strong><span class="tag">Routing</span></div>
+                <div class="pb">
+                  <div class="toolbar">
+                    <select id="allocMode">
+                      <option value="weighted">weighted（按权重）</option>
+                      <option value="priority">priority（按优先级）</option>
+                    </select>
+                    <button id="btnModelDiscover">自动发现本地模型</button>
+                    <button id="btnModelAddRow" class="soft">新增 provider</button>
+                    <button id="btnModelSave">保存路由</button>
+                  </div>
+                  <div class="table-wrap">
+                    <table>
+                      <thead><tr><th>provider_id</th><th>name</th><th>company</th><th>endpoint</th><th>adapter</th><th>model</th><th>api_key</th><th>enabled</th><th>weight</th><th>priority</th></tr></thead>
+                      <tbody id="modelAllocBody"></tbody>
+                    </table>
+                  </div>
+                  <div class="toolbar" style="margin-top:10px;">
+                    <input id="registerId" placeholder="provider_id" />
+                    <input id="registerName" placeholder="name" />
+                    <select id="registerCompany">
+                      <option value="custom">custom</option>
+                      <option value="local">local</option>
+                      <option value="openrouter">openrouter</option>
+                      <option value="yunwu">yunwu</option>
+                    </select>
+                    <input id="registerEndpoint" placeholder="endpoint (http://127.0.0.1:11434/v1/chat/completions)" style="min-width:320px;" />
+                    <select id="registerAdapter">
+                      <option value="openclaw_compatible">openclaw_compatible</option>
+                      <option value="openai_compatible">openai_compatible</option>
+                    </select>
+                    <input id="registerModel" placeholder="model(可空)" />
+                    <input id="registerApiKey" type="password" placeholder="API Key(云模型必填)" style="min-width:220px;" />
+                    <button id="btnModelRegister">注册模型</button>
+                  </div>
+                  <div class="toolbar">
+                    <button id="btnRegisterLoadModels" class="soft">拉取该公司全部模型</button>
+                    <select id="registerModelCatalog" style="min-width:360px;">
+                      <option value="">先拉取模型目录</option>
+                    </select>
+                    <button id="btnUseCatalogModel" class="soft">填入模型</button>
+                  </div>
+                  <div id="registerCatalogInfo" class="mono subtle"></div>
+                </div>
+              </article>
+
+              <article class="panel">
+                <div class="ph"><strong>策略生成模块</strong><span class="tag">Generation</span></div>
+                <div class="pb">
+                  <div class="toolbar">
+                    <input id="genCount" placeholder="生成数量" value="6" />
+                    <select id="genProvider"><option value="">按路由自动选择 provider</option></select>
+                    <button id="btnGenerateStrategy">生成策略</button>
+                  </div>
+                  <div class="hint">支持按 provider 定向生成，也支持由路由器自动分配。</div>
+                  <div id="genInfo" class="mono subtle" style="margin-top:8px;"></div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section id="sec-strategy" class="section">
+          <div class="section-title">
+            <h2>策略中心（配置 + 明细）</h2>
+            <small>这里可以编辑策略参数，查看每个策略的实时账户、订单、成交和日志。</small>
+          </div>
+          <div class="two-col">
+            <article class="panel">
+              <div class="ph"><strong>策略列表（实时）</strong><span class="tag">Strategy Board</span></div>
+              <div class="pb">
+                <div class="toolbar">
+                  <button id="btnReloadStrategies" class="soft">刷新策略板</button>
+                  <span class="subtle">选中策略后可在右侧编辑并查看明细。</span>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>ID</th><th>名称</th><th>类型</th><th>来源</th><th>状态</th><th>PnL</th><th>交易数</th><th>胜率</th><th>操作</th></tr></thead>
+                    <tbody id="strategyBoardBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="ph"><strong>策略明细与编辑</strong><span id="detailTag" class="tag">未选择</span></div>
+              <div class="pb">
+                <div class="toolbar">
+                  <input id="detailStrategyId" placeholder="strategy_id" disabled />
+                  <input id="detailName" placeholder="策略名称" style="min-width:220px;" />
+                  <select id="detailType">
+                    <option value="periodic">periodic</option>
+                    <option value="mean_reversion">mean_reversion</option>
+                  </select>
+                  <label><input id="detailEnabled" type="checkbox" /> 启用</label>
+                </div>
+                <div class="toolbar">
+                  <button id="btnStrategySave">保存策略配置</button>
+                  <button id="btnStrategyUseOrder" class="soft">用于手动下单</button>
+                  <button id="btnStrategyReload" class="soft">刷新该策略明细</button>
+                </div>
+                <textarea id="detailParams" style="width:100%;height:120px;" placeholder="策略参数 JSON"></textarea>
+
+                <div class="detail-grid" style="margin-top:10px;">
+                  <div class="detail-card">
+                    <b>账户快照</b>
+                    <div class="kpi" id="detailAccountKpi"></div>
+                  </div>
+                  <div class="detail-card">
+                    <b>持仓</b>
+                    <div id="detailPos" class="mono subtle">-</div>
+                  </div>
+                </div>
+
+                <div class="split" style="margin-top:10px;">
+                  <div>
+                    <div class="subtle" style="margin-bottom:6px;">该策略订单（最近80）</div>
+                    <div class="table-wrap mini-table">
+                      <table>
+                        <thead><tr><th>时间</th><th>ID</th><th>token</th><th>side</th><th>余量</th><th>状态</th></tr></thead>
+                        <tbody id="detailOrderBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="subtle" style="margin-bottom:6px;">该策略成交（最近80）</div>
+                    <div class="table-wrap mini-table">
+                      <table>
+                        <thead><tr><th>时间</th><th>ID</th><th>token</th><th>side</th><th>qty</th><th>price</th></tr></thead>
+                        <tbody id="detailFillBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="margin-top:10px;">
+                  <div class="subtle" style="margin-bottom:6px;">该策略日志（最近200）</div>
+                  <div id="detailLogBox" class="log" style="height:170px;"></div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="sec-trading" class="section">
+          <div class="section-title">
+            <h2>模拟交易执行</h2>
+            <small>真实盘口 + 本地撮合。手动和自动 Bot 共用同一套模拟账户。</small>
+          </div>
+          <div class="two-col">
+            <article class="panel">
+              <div class="ph"><strong>交易引擎与自动 Bot</strong><span class="tag">Simulator Engine</span></div>
+              <div class="pb">
+                <div class="kpi" id="paperTradeKpi"></div>
+                <div class="toolbar" style="margin-top:10px;">
+                  <select id="paperMarketSel"><option value="">从市场快速选择 token</option></select>
+                  <button id="btnUseMarketToken" class="soft">填入 token</button>
+                  <button id="btnLoadMarkets" class="soft">刷新市场</button>
+                </div>
+                <div class="toolbar">
+                  <input id="paperToken" placeholder="token_id（Bot 与手动共用）" style="min-width:340px;" />
+                  <input id="paperInterval" placeholder="Bot 间隔秒" value="12" />
+                  <label><input id="paperPreferStream" type="checkbox" checked /> 优先事件流</label>
+                  <button id="btnPaperBotStart">启动模拟 Bot</button>
+                  <button id="btnPaperBotStop" class="warn">停止模拟 Bot</button>
+                  <button id="btnStreamStart" class="soft">启动行情流</button>
+                  <button id="btnStreamStop" class="soft">停止行情流</button>
+                  <button id="btnPaperReset" class="bad">重置模拟资金</button>
+                </div>
+                <div id="paperBotMeta" class="mono subtle"></div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="ph"><strong>手动模拟下单</strong><span class="tag">Manual Execution</span></div>
+              <div class="pb">
+                <div class="toolbar">
+                  <select id="paperStrategySel"><option value="manual">manual</option></select>
+                  <input id="paperStrategyId" placeholder="strategy_id（默认 manual）" value="manual" />
+                  <input id="paperOrderToken" placeholder="token_id" style="min-width:320px;" />
+                  <select id="paperOrderSide"><option value="buy">BUY</option><option value="sell">SELL</option></select>
+                </div>
+                <div class="toolbar">
+                  <input id="paperOrderPrice" placeholder="限价 price" />
+                  <input id="paperOrderSize" placeholder="限价 size" />
+                  <input id="paperOrderAmount" placeholder="市价 amount(USDC)" />
+                </div>
+                <div class="toolbar">
+                  <select id="paperLimitTif">
+                    <option value="GTC">限价TIF: GTC</option>
+                    <option value="FAK">限价TIF: FAK</option>
+                    <option value="FOK">限价TIF: FOK</option>
+                    <option value="GTD">限价TIF: GTD</option>
+                  </select>
+                  <input id="paperGtdSec" placeholder="GTD过期秒(默认300)" value="300" />
+                  <select id="paperMarketTif">
+                    <option value="FOK">市价TIF: FOK</option>
+                    <option value="FAK">市价TIF: FAK</option>
+                  </select>
+                </div>
+                <div class="toolbar">
+                  <input id="paperOrderTick" placeholder="tick_size(可空，自动取市场)" />
+                  <input id="paperOrderMinSize" placeholder="min_size(可空，自动取市场)" />
+                  <input id="paperOrderFeeBps" placeholder="fee_bps(可空，自动取规则)" />
+                </div>
+                <div class="toolbar">
+                  <button id="btnPaperLimit">下模拟限价单</button>
+                  <button id="btnPaperMarket" class="soft">下模拟市价单</button>
+                  <button id="btnPaperCancelAll" class="warn">全撤模拟单</button>
+                </div>
+                <div id="paperRuleHint" class="mono subtle"></div>
+                <div id="paperOrderResp" class="log" style="height:160px;"></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="sec-performance" class="section">
+          <div class="section-title">
+            <h2>绩效评估与晋级门禁</h2>
+            <small>判断策略是否具备从模拟盘晋级到实盘的资格。</small>
+          </div>
+          <div class="grid g2">
+            <article class="panel">
+              <div class="ph"><strong>模拟执行记录</strong><span class="tag">Orders / Fills / Ranking</span></div>
+              <div class="pb">
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>时间</th><th>order_id</th><th>strategy</th><th>token</th><th>kind</th><th>TIF</th><th>side</th><th>剩余/总量</th><th>价格</th><th>状态</th><th>原因</th><th>操作</th></tr></thead>
+                    <tbody id="paperOrderBody"></tbody>
+                  </table>
+                </div>
+                <div class="table-wrap" style="margin-top:10px;">
+                  <table>
+                    <thead><tr><th>时间</th><th>fill_id</th><th>strategy</th><th>token</th><th>side</th><th>qty</th><th>price</th><th>fee</th></tr></thead>
+                    <tbody id="paperFillBody"></tbody>
+                  </table>
+                </div>
+                <div class="table-wrap" style="margin-top:10px;">
+                  <table>
+                    <thead><tr><th>排名</th><th>strategy_id</th><th>equity</th><th>pnl</th><th>pnl%</th><th>realized</th><th>unrealized</th><th>fees</th><th>trades</th><th>win%</th><th>open_orders</th></tr></thead>
+                    <tbody id="paperAccountBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </article>
+
+            <article id="sec-promotion" class="panel">
+              <div class="ph"><strong>晋级门禁</strong><span class="tag">Promotion Gate</span></div>
+              <div class="pb">
+                <div class="toolbar">
+                  <input id="thMinPnl" placeholder="min_pnl" value="0" />
+                  <input id="thMaxDd" placeholder="max_dd_pct" value="1.5" />
+                  <input id="thMinTrades" placeholder="min_trades" value="20" />
+                  <input id="thMinWinRate" placeholder="min_win_rate" value="0.45" />
+                  <button id="btnPromotionFilter">筛选候选</button>
+                </div>
+                <div id="promotionInfo" class="mono subtle" style="margin-bottom:8px;">等待筛选...</div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>strategy_id</th><th>trades</th><th>turnover</th><th>pnl</th><th>max_dd%</th><th>win_rate</th><th>net_pos</th><th>操作</th></tr></thead>
+                    <tbody id="promotionBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="sec-logs" class="section">
+          <div class="section-title">
+            <h2>系统日志</h2>
+            <small>模型生成、Bot、下单、成交、晋级事件统一追踪。</small>
+          </div>
+          <article class="panel">
+            <div class="ph"><strong>事件流</strong><span class="tag">Event Stream</span></div>
+            <div class="pb">
+              <div class="toolbar">
+                <input id="logKw" placeholder="按 strategy_id 过滤（可空）" />
+                <button id="btnLogs" class="soft">刷新日志</button>
+              </div>
+              <div id="logBox" class="log"></div>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      summary: {},
+      race: {},
+      model: {},
+      modelAlloc: { mode: 'weighted', providers: [] },
+      modelCompanies: [],
+      registerCatalogRows: [],
+      logs: [],
+      paperStatus: {},
+      paperOrders: [],
+      paperFills: [],
+      paperMarkets: [],
+      paperMarketsSource: '',
+      paperMarketsWarning: '',
+      paperMarketsUpdated: '',
+      strategies: [],
+      perfRows: [],
+      strategyDetail: null,
+      selectedStrategyId: '',
+      workflow: {},
+      promotionCandidates: [],
+      perfMap: {},
+      accountMap: {},
+      quoteMap: {},
+    };
+
+    const sectionIds = ['sec-overview', 'sec-models', 'sec-strategy', 'sec-trading', 'sec-performance', 'sec-promotion', 'sec-logs'];
+    const flowLinks = [...document.querySelectorAll('.flow-link')];
+    let refreshing = false;
+
+    function e(v) {
+      return String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function j(v) { return JSON.stringify(v ?? {}, null, 2); }
+
+    function num(v, d = 4) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n.toFixed(d) : '-';
+    }
+
+    function pct(v, d = 2) {
+      const n = Number(v);
+      return Number.isFinite(n) ? `${n.toFixed(d)}%` : '-';
+    }
+
+    function optionalNumber(v) {
+      if (v === null || v === undefined) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function firstTokenId(m) {
+      const rows = m?.token_ids || [];
+      if (Array.isArray(rows) && rows.length > 0) return String(rows[0] || '');
+      return '';
+    }
+
+    function flash(msg, kind = '') {
+      const el = document.getElementById('toast');
+      el.textContent = String(msg || '');
+      el.className = `toast ${kind}`.trim();
+    }
+
+    async function api(path, options) {
+      const resp = await fetch(path, options);
+      const txt = await resp.text();
+      let body;
+      try { body = txt ? JSON.parse(txt) : {}; } catch { body = txt; }
+      if (!resp.ok) {
+        const msg = typeof body === 'string' ? body : String(body?.detail || j(body));
+        throw new Error(msg);
+      }
+      return body;
+    }
+
+    async function apiSafe(path, fallback, errors, label = '') {
+      try {
+        return await api(path);
+      } catch (err) {
+        if (Array.isArray(errors)) {
+          errors.push(`${label || path}: ${String(err)}`);
+        }
+        return fallback;
+      }
+    }
+
+    function applyTokenFromQuery() {
+      const p = new URLSearchParams(window.location.search);
+      const token = String(p.get('token') || '').trim();
+      if (!token) return;
+      document.getElementById('paperToken').value = token;
+      document.getElementById('paperOrderToken').value = token;
+      flash(`已按链接自动填入 token=${token}`, 'ok');
+    }
+
+    function companyRows() {
+      if (Array.isArray(state.modelCompanies) && state.modelCompanies.length) return state.modelCompanies;
+      return [
+        { company: 'local', name: '本地模型', adapter: 'openai_compatible', default_endpoint: 'http://127.0.0.1:11434/v1/chat/completions' },
+        { company: 'openrouter', name: 'OpenRouter', adapter: 'openai_compatible', default_endpoint: 'https://openrouter.ai/api/v1/chat/completions' },
+        { company: 'yunwu', name: 'Yunwu', adapter: 'openai_compatible', default_endpoint: 'https://api.yunwu.ai/v1/chat/completions' },
+        { company: 'custom', name: '自定义', adapter: 'openai_compatible', default_endpoint: '' },
+      ];
+    }
+
+    function companyOptionsHtml(selected) {
+      const rows = companyRows();
+      return rows
+        .map((x) => `<option value="${e(x.company || '')}" ${String(x.company || '') === String(selected || '') ? 'selected' : ''}>${e(x.company || '')}</option>`)
+        .join('');
+    }
+
+    function companyMeta(company) {
+      const c = String(company || '').trim().toLowerCase();
+      return companyRows().find((x) => String(x.company || '').toLowerCase() === c) || null;
+    }
+
+    function renderRegisterCompanyOptions() {
+      const sel = document.getElementById('registerCompany');
+      if (!sel) return;
+      const old = sel.value;
+      sel.innerHTML = companyOptionsHtml(old || 'custom');
+      if (old && [...sel.options].some((o) => o.value === old)) {
+        sel.value = old;
+      }
+    }
+
+    function applyRegisterCompanyDefaults(forceEndpoint = false) {
+      const company = String(document.getElementById('registerCompany').value || 'custom').trim().toLowerCase();
+      const meta = companyMeta(company);
+      const endpointEl = document.getElementById('registerEndpoint');
+      const adapterEl = document.getElementById('registerAdapter');
+      if (meta && meta.adapter) {
+        adapterEl.value = meta.adapter;
+      }
+      if (meta && meta.default_endpoint) {
+        if (forceEndpoint || !String(endpointEl.value || '').trim()) {
+          endpointEl.value = meta.default_endpoint;
+        }
+      }
+    }
+
+    function updateFlowActive() {
+      let current = sectionIds[0];
+      const y = window.scrollY + 160;
+      for (const id of sectionIds) {
+        const el = document.getElementById(id);
+        if (el && el.offsetTop <= y) current = id;
+      }
+      flowLinks.forEach((a) => a.classList.toggle('active', a.getAttribute('href') === `#${current}`));
+    }
+
+    function buildMaps() {
+      state.perfMap = {};
+      state.accountMap = {};
+      (state.perfRows || []).forEach((r) => { state.perfMap[String(r.strategy_id || '')] = r; });
+      ((state.paperStatus || {}).leaderboard || []).forEach((r) => { state.accountMap[String(r.strategy_id || '')] = r; });
+    }
+
+    function renderSummary() {
+      const s = state.summary || {};
+      document.getElementById('summaryBox').innerHTML = `
+        <div>时间: <span class="mono">${e(s.fetched_at_utc || '-')}</span></div>
+        <div>策略: <b>${e(s.strategy || '-')}</b></div>
+        <div>PnL: <b class="${Number(s.realized_pnl || 0) >= 0 ? 'ok' : 'bad'}">${num(s.realized_pnl, 4)}</b></div>
+        <div>回撤: <b>${num(s.max_drawdown_pct, 3)}%</b></div>
+      `;
+      const rows = [
+        ['快照', s.snapshot_count ?? 0],
+        ['成交', s.fills_count ?? 0],
+        ['胜率', `${(Number(s.win_rate || 0) * 100).toFixed(1)}%`],
+        ['总手续费', num(s.total_fees, 6)],
+        ['总换手', num(s.turnover, 4)],
+        ['期末权益', num(s.final_equity, 4)],
+        ['PnL', num(s.realized_pnl, 4)],
+        ['风险熔断', s.risk_halted ? '是' : '否'],
+      ];
+      document.getElementById('kpi').innerHTML = rows
+        .map(([n, v]) => `<div class="k"><div class="n">${e(n)}</div><div class="v">${e(v)}</div></div>`)
+        .join('');
+    }
+
+    function renderRace() {
+      const r = state.race || {};
+      document.getElementById('raceMeta').innerHTML = `
+        <div>候选策略: <b>${e(r.candidates ?? 0)}</b></div>
+        <div>快照: <b>${e(r.snapshot_count ?? 0)}</b></div>
+        <div>时间: <span class="mono">${e(r.finished_at_utc || '-')}</span></div>
+      `;
+      const body = document.getElementById('raceBody');
+      body.innerHTML = '';
+      (r.leaderboard || []).forEach((x, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td class="mono">${e(x.strategy_id || '')}</td>
+          <td>${e(x.name || '')}</td>
+          <td>${e(x.type || '')}</td>
+          <td>${num(x.score, 4)}</td>
+          <td class="${Number(x.pnl || 0) >= 0 ? 'ok' : 'bad'}">${num(x.pnl, 4)}</td>
+          <td>${num(x.max_drawdown_pct, 3)}</td>
+          <td>${(Number(x.win_rate || 0) * 100).toFixed(1)}%</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    function renderWorkflow() {
+      const wf = state.workflow || {};
+      const steps = Array.isArray(wf.steps) ? wf.steps : [];
+      const box = document.getElementById('workflowBox');
+      box.innerHTML = '';
+      if (!steps.length) {
+        box.innerHTML = '<div class="workflow-item"><div class="row"><b>暂无状态</b><span class="status-pill">-</span></div></div>';
+      } else {
+        steps.forEach((s) => {
+          const done = !!s.done;
+          const div = document.createElement('div');
+          div.className = 'workflow-item';
+          div.innerHTML = `
+            <div class="row">
+              <b>${e(s.title || s.key || '')}</b>
+              <span class="status-pill ${done ? 'ok' : 'todo'}">${done ? '完成' : '待完成'}</span>
+            </div>
+            <div class="detail">${e(s.detail || '')}</div>
+          `;
+          box.appendChild(div);
+        });
+      }
+      document.getElementById('nextAction').textContent = `下一步: ${wf.next_action || '等待数据...'}`;
+
+      const mark = (id, ok) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = ok ? 'OK' : 'TODO';
+      };
+      const map = {};
+      steps.forEach((s) => { map[String(s.key || '')] = !!s.done; });
+      mark('flow-overview', map.overview);
+      mark('flow-models', map.models);
+      mark('flow-strategies', map.strategies);
+      mark('flow-execution', map.execution);
+      mark('flow-evaluation', map.evaluation);
+      mark('flow-promotion', map.promotion);
+    }
+
+    function renderModel() {
+      const m = state.model || {};
+      const sc = m.strategy_source_count || {};
+      const rows = [
+        ['OpenClaw配置', m.openclaw_configured ? '已配置' : '未配置'],
+        ['OpenClaw健康', m.openclaw_health_ok ? '正常' : '异常'],
+        ['健康延迟ms', m.openclaw_health_latency_ms || 0],
+        ['策略总数', m.strategy_total || 0],
+        ['启用策略', m.strategy_enabled || 0],
+        ['AI生成次数', m.generate_openclaw || 0],
+        ['总生成次数', m.generate_total || 0],
+        ['OpenClaw错误', m.openclaw_error_total || 0],
+        ['模板策略', sc.template || 0],
+        ['AI策略', sc.openclaw || 0],
+        ['OpenAI策略', sc.openai || 0],
+        ['OpenRouter策略', sc.openrouter || 0],
+        ['Yunwu策略', sc.yunwu || 0],
+      ];
+      document.getElementById('modelKpi').innerHTML = rows
+        .map(([n, v]) => `<div class="k"><div class="n">${e(n)}</div><div class="v">${e(v)}</div></div>`)
+        .join('');
+      document.getElementById('modelMeta').textContent =
+        `endpoint=${m.openclaw_endpoint || '-'} | timeout=${m.openclaw_timeout_sec || '-'}s | health=${m.openclaw_health_status || '-'}(${m.openclaw_health_detail || '-'}) | last_generate=${m.last_generate_utc || '-'} | last_error=${m.last_openclaw_error || '-'}`;
+
+      const body = document.getElementById('modelEventBody');
+      body.innerHTML = '';
+      (m.recent_model_events || []).slice().reverse().forEach((ev) => {
+        const detail = ev.error || ev.detail || ev.signal || (`count=${String(ev.count ?? '')}${ev.latency_ms ? ` latency=${ev.latency_ms}ms` : ''}`);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${e(ev.time_utc || '')}</td>
+          <td>${e(ev.kind || '')}</td>
+          <td>${e(ev.source || ev.strategy_id || ev.status || '')}</td>
+          <td class="mono">${e(detail)}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    function renderModelAlloc() {
+      const cfg = state.modelAlloc || { mode: 'weighted', providers: [] };
+      document.getElementById('allocMode').value = cfg.mode || 'weighted';
+      renderRegisterCompanyOptions();
+
+      const body = document.getElementById('modelAllocBody');
+      body.innerHTML = '';
+      (cfg.providers || []).forEach((p) => {
+        const company = String(p.company || '').trim().toLowerCase() || 'custom';
+        const keyHint = p.has_api_key ? (p.api_key_masked || '已保存') : '不修改则保留后端已存 key';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input data-field="provider_id" value="${e(p.provider_id || '')}" /></td>
+          <td><input data-field="name" value="${e(p.name || '')}" /></td>
+          <td>
+            <select data-field="company">
+              ${companyOptionsHtml(company)}
+            </select>
+          </td>
+          <td><input data-field="endpoint" value="${e(p.endpoint || '')}" style="min-width:280px;" /></td>
+          <td>
+            <select data-field="adapter">
+              <option value="openclaw_compatible" ${(p.adapter || 'openclaw_compatible') === 'openclaw_compatible' ? 'selected' : ''}>openclaw_compatible</option>
+              <option value="openai_compatible" ${(p.adapter || 'openclaw_compatible') === 'openai_compatible' ? 'selected' : ''}>openai_compatible</option>
+            </select>
+          </td>
+          <td><input data-field="model" value="${e(p.model || '')}" /></td>
+          <td><input data-field="api_key" type="password" placeholder="${e(keyHint)}" /></td>
+          <td><input data-field="enabled" type="checkbox" ${p.enabled ? 'checked' : ''} /></td>
+          <td><input data-field="weight" value="${e(p.weight ?? 1)}" /></td>
+          <td><input data-field="priority" value="${e(p.priority ?? 100)}" /></td>
+        `;
+        body.appendChild(tr);
+      });
+
+      const providerSel = document.getElementById('genProvider');
+      const old = providerSel.value;
+      providerSel.innerHTML = '<option value="">按路由自动选择 provider</option>';
+      (cfg.providers || []).forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p.provider_id || '';
+        opt.textContent = `${p.provider_id || '-'} | ${p.company || '-'} | ${p.name || '-'} | ${p.adapter || '-'} | ${p.model || '-'}`;
+        providerSel.appendChild(opt);
+      });
+      providerSel.value = old;
+    }
+
+    function renderStrategySelects() {
+      const sel = document.getElementById('paperStrategySel');
+      const old = sel.value;
+      sel.innerHTML = '<option value="manual">manual</option>';
+      (state.strategies || []).forEach((s) => {
+        const opt = document.createElement('option');
+        opt.value = s.strategy_id || '';
+        opt.textContent = `${s.strategy_id || ''} | ${s.name || ''}`;
+        sel.appendChild(opt);
+      });
+      sel.value = old && [...sel.options].some((o) => o.value === old) ? old : 'manual';
+    }
+
+    function renderStrategyBoard() {
+      const body = document.getElementById('strategyBoardBody');
+      body.innerHTML = '';
+      const rows = [...(state.strategies || [])];
+      rows.sort((a, b) => {
+        const ap = Number((state.accountMap[a.strategy_id] || {}).total_pnl ?? (state.perfMap[a.strategy_id] || {}).realized_pnl ?? 0);
+        const bp = Number((state.accountMap[b.strategy_id] || {}).total_pnl ?? (state.perfMap[b.strategy_id] || {}).realized_pnl ?? 0);
+        if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+        return bp - ap;
+      });
+
+      rows.forEach((s) => {
+        const sid = String(s.strategy_id || '');
+        const perf = state.perfMap[sid] || {};
+        const acc = state.accountMap[sid] || {};
+        const pnl = Number(acc.total_pnl ?? perf.realized_pnl ?? 0);
+        const trades = Number(acc.trade_count ?? perf.trades ?? 0);
+        const winRate = Number((acc.win_rate ?? perf.win_rate ?? 0) * 100);
+        const tr = document.createElement('tr');
+        if (sid && sid === state.selectedStrategyId) tr.className = 'row-selected';
+        tr.innerHTML = `
+          <td class="mono">${e(sid)}</td>
+          <td>${e(s.name || '')}</td>
+          <td>${e(s.strategy_type || '')}</td>
+          <td>${e(s.source || '-')}</td>
+          <td><span class="tag ${s.enabled ? 'ok' : 'bad'}">${s.enabled ? '启用' : '停用'}</span></td>
+          <td class="${pnl >= 0 ? 'ok' : 'bad'}">${num(pnl, 4)}</td>
+          <td>${Number.isFinite(trades) ? trades : 0}</td>
+          <td>${Number.isFinite(winRate) ? winRate.toFixed(1) : '0.0'}%</td>
+          <td>
+            <button class="soft btnViewStrategy" data-id="${e(sid)}">查看</button>
+            <button class="warn btnToggleStrategy" data-id="${e(sid)}" data-enabled="${s.enabled ? '1' : '0'}">${s.enabled ? '停用' : '启用'}</button>
+            <button class="btnUseStrategy" data-id="${e(sid)}">下单</button>
+          </td>
+        `;
+        body.appendChild(tr);
+      });
+
+      document.querySelectorAll('.btnViewStrategy').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const sid = btn.getAttribute('data-id') || '';
+          if (!sid) return;
+          await loadStrategyDetail(sid, false);
+          renderStrategyBoard();
+        });
+      });
+
+      document.querySelectorAll('.btnToggleStrategy').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const sid = btn.getAttribute('data-id') || '';
+          if (!sid) return;
+          const enabled = btn.getAttribute('data-enabled') === '1';
+          await api('/api/strategies/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ strategy_id: sid, enabled: !enabled }),
+          });
+          flash(`策略 ${sid} 已${enabled ? '停用' : '启用'}`, 'ok');
+          await refreshAll({ silent: true });
+        });
+      });
+
+      document.querySelectorAll('.btnUseStrategy').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const sid = btn.getAttribute('data-id') || '';
+          if (!sid) return;
+          document.getElementById('paperStrategyId').value = sid;
+          document.getElementById('paperStrategySel').value = sid;
+          document.getElementById('sec-trading').scrollIntoView({ behavior: 'smooth', block: 'start' });
+          flash(`已选中策略 ${sid} 用于手动下单`, 'ok');
+        });
+      });
+    }
+
+    function renderStrategyDetail() {
+      const detail = state.strategyDetail || {};
+      const s = detail.strategy || null;
+      const tag = document.getElementById('detailTag');
+      const idEl = document.getElementById('detailStrategyId');
+      const nameEl = document.getElementById('detailName');
+      const typeEl = document.getElementById('detailType');
+      const enabledEl = document.getElementById('detailEnabled');
+      const paramsEl = document.getElementById('detailParams');
+
+      if (!s) {
+        tag.textContent = '未选择';
+        idEl.value = '';
+        nameEl.value = '';
+        typeEl.value = 'periodic';
+        enabledEl.checked = false;
+        paramsEl.value = '';
+        document.getElementById('detailAccountKpi').innerHTML = '';
+        document.getElementById('detailPos').textContent = '-';
+        document.getElementById('detailOrderBody').innerHTML = '';
+        document.getElementById('detailFillBody').innerHTML = '';
+        document.getElementById('detailLogBox').textContent = '';
+        return;
+      }
+
+      tag.textContent = s.strategy_id || '-';
+      idEl.value = s.strategy_id || '';
+      nameEl.value = s.name || '';
+      typeEl.value = s.strategy_type || 'periodic';
+      enabledEl.checked = !!s.enabled;
+      paramsEl.value = j(s.params || {});
+
+      const account = detail.account || {};
+      const rows = [
+        ['权益', num(account.equity, 4)],
+        ['PnL', num(account.total_pnl, 4)],
+        ['PnL%', pct(account.total_pnl_pct, 3)],
+        ['已实现', num(account.realized_pnl, 4)],
+        ['未实现', num(account.unrealized_pnl, 4)],
+        ['手续费', num(account.total_fees, 6)],
+        ['交易数', Number(account.trade_count || 0)],
+        ['胜率', `${(Number(account.win_rate || 0) * 100).toFixed(1)}%`],
+      ];
+      document.getElementById('detailAccountKpi').innerHTML = rows
+        .map(([n, v]) => `<div class="k"><div class="n">${e(n)}</div><div class="v ${n === 'PnL' && Number(account.total_pnl || 0) < 0 ? 'bad' : ''}">${e(v)}</div></div>`)
+        .join('');
+
+      const posRows = account.positions || [];
+      document.getElementById('detailPos').textContent = posRows.length ? posRows.map((p) => j(p)).join('\n') : '无持仓';
+
+      const orderBody = document.getElementById('detailOrderBody');
+      orderBody.innerHTML = '';
+      (detail.orders || []).slice().reverse().forEach((o) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${e(o.updated_at_utc || o.created_at_utc || '')}</td>
+          <td class="mono">${e(o.order_id || '')}</td>
+          <td class="mono">${e(o.token_id || '')}</td>
+          <td>${e(o.side || '')}</td>
+          <td>${num(o.remaining, 4)} / ${num(o.quantity, 4)}</td>
+          <td>${e(o.status || '')}</td>
+        `;
+        orderBody.appendChild(tr);
+      });
+
+      const fillBody = document.getElementById('detailFillBody');
+      fillBody.innerHTML = '';
+      (detail.fills || []).slice().reverse().forEach((f) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${e(f.time_utc || '')}</td>
+          <td class="mono">${e(f.fill_id || '')}</td>
+          <td class="mono">${e(f.token_id || '')}</td>
+          <td>${e(f.side || '')}</td>
+          <td>${num(f.quantity, 4)}</td>
+          <td>${num(f.price, 4)}</td>
+        `;
+        fillBody.appendChild(tr);
+      });
+
+      document.getElementById('detailLogBox').textContent = (detail.logs || []).map((x) => j(x)).join('\n\n');
+    }
+
+    function renderPaperTrade() {
+      const s = state.paperStatus || {};
+      const t = s.totals || {};
+      const bot = s.bot || {};
+      const stream = s.stream || {};
+      const rows = [
+        ['策略账户', s.accounts_count || 0],
+        ['挂单数', s.open_orders_count || 0],
+        ['成交数', s.fills_count || 0],
+        ['总权益', num(t.equity, 4)],
+        ['总PnL', num(t.total_pnl, 4)],
+        ['已实现', num(t.realized_pnl, 4)],
+        ['未实现', num(t.unrealized_pnl, 4)],
+        ['总手续费', num(t.total_fees, 6)],
+        ['规则缓存', s.token_rules_count || 0],
+      ];
+      document.getElementById('paperTradeKpi').innerHTML = rows
+        .map(([n, v]) => `<div class="k"><div class="n">${e(n)}</div><div class="v">${e(v)}</div></div>`)
+        .join('');
+      document.getElementById('paperBotMeta').textContent =
+        `bot=${bot.running ? 'running' : 'stopped'} token=${bot.token_id || '-'} interval=${bot.interval_sec || '-'}s tick=${bot.tick || 0} prefer_stream=${bot.prefer_stream ? 'Y' : 'N'} stream_events=${bot.stream_events || 0} stream_age=${bot.stream_book_age_sec == null ? '-' : Number(bot.stream_book_age_sec).toFixed(1) + 's'} | stream_running=${stream.running ? 'Y' : 'N'} connected=${stream.connected ? 'Y' : 'N'} subs=${(stream.subscribed_assets || []).length} recv=${stream.recv_total || 0} | fee=${s.fee_bps || 0}bps | max_order=${s.max_order_notional || 0}`;
+
+      const body = document.getElementById('paperAccountBody');
+      body.innerHTML = '';
+      (s.leaderboard || []).forEach((x, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td class="mono">${e(x.strategy_id || '')}</td>
+          <td>${num(x.equity, 4)}</td>
+          <td class="${Number(x.total_pnl || 0) >= 0 ? 'ok' : 'bad'}">${num(x.total_pnl, 4)}</td>
+          <td class="${Number(x.total_pnl_pct || 0) >= 0 ? 'ok' : 'bad'}">${num(x.total_pnl_pct, 3)}%</td>
+          <td>${num(x.realized_pnl, 4)}</td>
+          <td>${num(x.unrealized_pnl, 4)}</td>
+          <td>${num(x.total_fees, 6)}</td>
+          <td>${Number(x.trade_count || 0)}</td>
+          <td>${(Number(x.win_rate || 0) * 100).toFixed(1)}%</td>
+          <td>${Number(x.open_orders || 0)}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    function renderPaperOrders() {
+      const body = document.getElementById('paperOrderBody');
+      body.innerHTML = '';
+      (state.paperOrders || []).slice().reverse().forEach((o) => {
+        const tr = document.createElement('tr');
+        const cancelReason = o.cancel_reason || '';
+        const canCancel = ['open', 'partial'].includes(String(o.status || ''));
+        tr.innerHTML = `
+          <td class="mono">${e(o.updated_at_utc || o.created_at_utc || '')}</td>
+          <td class="mono">${e(o.order_id || '')}</td>
+          <td class="mono">${e(o.strategy_id || '')}</td>
+          <td class="mono">${e(o.token_id || '')}</td>
+          <td>${e(o.order_kind || '-')}</td>
+          <td>${e(o.time_in_force || o.order_type || '-')}</td>
+          <td>${e(o.side || '')}</td>
+          <td>${num(o.remaining, 4)} / ${num(o.quantity, 4)}</td>
+          <td>${num(o.limit_price, 4)}</td>
+          <td>${e(o.status || '')}</td>
+          <td class="mono">${e(cancelReason)}</td>
+          <td>${canCancel ? `<button class="warn paperCancelBtn" data-id="${e(o.order_id || '')}">撤单</button>` : '-'}</td>
+        `;
+        body.appendChild(tr);
+      });
+
+      document.querySelectorAll('.paperCancelBtn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          if (!id) return;
+          await api(`/api/paper/trading/orders/cancel/${id}`, { method: 'POST' });
+          flash(`已撤单 ${id}`, 'ok');
+          await refreshAll({ silent: true });
+        });
+      });
+    }
+
+    function renderPaperFills() {
+      const body = document.getElementById('paperFillBody');
+      body.innerHTML = '';
+      (state.paperFills || []).slice().reverse().forEach((f) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${e(f.time_utc || '')}</td>
+          <td class="mono">${e(f.fill_id || '')}</td>
+          <td class="mono">${e(f.strategy_id || '')}</td>
+          <td class="mono">${e(f.token_id || '')}</td>
+          <td>${e(f.side || '')}</td>
+          <td>${num(f.quantity, 4)}</td>
+          <td>${num(f.price, 4)}</td>
+          <td>${num(f.fee, 6)}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    function renderPaperMarkets() {
+      const sel = document.getElementById('paperMarketSel');
+      const old = sel.value;
+      sel.innerHTML = '<option value="">从市场快速选择 token</option>';
+      (state.paperMarkets || []).forEach((m) => {
+        const token = firstTokenId(m);
+        if (!token) return;
+        const tick = m.order_price_min_tick_size ?? '-';
+        const minSize = m.order_min_size ?? '-';
+        const opt = document.createElement('option');
+        opt.value = token;
+        opt.textContent = `${token} | tick=${tick} min=${minSize} | ${(m.question || '').slice(0, 32)}`;
+        opt.dataset.tick = String(m.order_price_min_tick_size ?? '');
+        opt.dataset.minSize = String(m.order_min_size ?? '');
+        opt.dataset.feesEnabled = String(m.fees_enabled ?? '');
+        opt.dataset.feeType = String(m.fee_type ?? '');
+        sel.appendChild(opt);
+      });
+      sel.value = old && [...sel.options].some((o) => o.value === old) ? old : '';
+    }
+
+    function bestBidAskFromBook(book) {
+      if (!book || typeof book !== 'object') return { bid: null, ask: null };
+      const bids = Array.isArray(book.bids) ? book.bids : [];
+      const asks = Array.isArray(book.asks) ? book.asks : [];
+      const bid = bids.length ? Number(bids[0].price) : null;
+      const ask = asks.length ? Number(asks[0].price) : null;
+      return {
+        bid: Number.isFinite(bid) ? bid : null,
+        ask: Number.isFinite(ask) ? ask : null,
+      };
+    }
+
+    function renderMarketQuotes() {
+      const body = document.getElementById('marketQuoteBody');
+      const meta = document.getElementById('marketQuoteMeta');
+      meta.textContent = `来源=${state.paperMarketsSource || '-'} | warning=${state.paperMarketsWarning || '无'} | market_count=${(state.paperMarkets || []).length} | updated=${state.paperMarketsUpdated || '-'}`;
+      body.innerHTML = '';
+      (state.paperMarkets || []).slice(0, 20).forEach((m, idx) => {
+        const token = firstTokenId(m);
+        if (!token) return;
+        const q = state.quoteMap[token] || {};
+        const bid = Number.isFinite(q.bid) ? q.bid : (Number.isFinite(Number(m.best_bid)) ? Number(m.best_bid) : null);
+        const ask = Number.isFinite(q.ask) ? q.ask : (Number.isFinite(Number(m.best_ask)) ? Number(m.best_ask) : null);
+        const spread = bid != null && ask != null ? ask - bid : (Number.isFinite(Number(m.spread)) ? Number(m.spread) : null);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>${e((m.question || '').slice(0, 48))}</td>
+          <td class="mono">${e(token)}</td>
+          <td>${bid == null ? '-' : num(bid, 4)}</td>
+          <td>${ask == null ? '-' : num(ask, 4)}</td>
+          <td>${spread == null ? '-' : num(spread, 4)}</td>
+          <td>${m.order_price_min_tick_size == null ? '-' : num(m.order_price_min_tick_size, 4)}</td>
+          <td>${m.order_min_size == null ? '-' : num(m.order_min_size, 2)}</td>
+          <td>${e(q.source || m.source || '-')}</td>
+          <td><button class="soft btnPickToken" data-token="${e(token)}">选中 token</button></td>
+        `;
+        body.appendChild(tr);
+      });
+
+      if (!body.innerHTML) {
+        body.innerHTML = '<tr><td colspan="10" class="subtle">暂无可用行情，请点击“刷新市场”或检查网络连接。</td></tr>';
+      }
+
+      document.querySelectorAll('.btnPickToken').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const token = btn.getAttribute('data-token') || '';
+          if (!token) return;
+          document.getElementById('paperToken').value = token;
+          document.getElementById('paperOrderToken').value = token;
+          flash(`已选中 token=${token}`, 'ok');
+          document.getElementById('sec-trading').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+    }
+
+    async function refreshMarketQuotes() {
+      const tokens = [];
+      (state.paperMarkets || []).slice(0, 8).forEach((m) => {
+        const t = firstTokenId(m);
+        if (t) tokens.push(t);
+      });
+      if (!tokens.length) return;
+
+      const jobs = tokens.map(async (token) => {
+        try {
+          const book = await api(`/api/paper/orderbook/${token}`);
+          const ba = bestBidAskFromBook(book);
+          state.quoteMap[token] = {
+            bid: ba.bid,
+            ask: ba.ask,
+            source: 'orderbook',
+            updated_at: new Date().toISOString(),
+          };
+        } catch (err) {
+          state.quoteMap[token] = {
+            bid: null,
+            ask: null,
+            source: `error:${String(err).slice(0, 40)}`,
+            updated_at: new Date().toISOString(),
+          };
+        }
+      });
+      await Promise.all(jobs);
+      renderMarketQuotes();
+    }
+
+    function renderLogs() {
+      const kw = document.getElementById('logKw').value.trim();
+      const rows = (state.logs || []).filter((x) => !kw || String(x.strategy_id || '').includes(kw));
+      document.getElementById('logBox').textContent = rows.map((x) => j(x)).join('\n\n');
+    }
+
+    function thresholds() {
+      return {
+        min_pnl: Number(document.getElementById('thMinPnl').value || 0),
+        max_dd_pct: Number(document.getElementById('thMaxDd').value || 1.5),
+        min_trades: Number(document.getElementById('thMinTrades').value || 20),
+        min_win_rate: Number(document.getElementById('thMinWinRate').value || 0.45),
+      };
+    }
+
+    function renderPromotion() {
+      const body = document.getElementById('promotionBody');
+      body.innerHTML = '';
+      (state.promotionCandidates || []).forEach((r) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${e(r.strategy_id || '')}</td>
+          <td>${Number(r.trades || 0)}</td>
+          <td>${num(r.turnover, 4)}</td>
+          <td class="${Number(r.realized_pnl || 0) >= 0 ? 'ok' : 'bad'}">${num(r.realized_pnl, 4)}</td>
+          <td>${num(r.max_drawdown_pct, 3)}</td>
+          <td>${(Number(r.win_rate || 0) * 100).toFixed(1)}%</td>
+          <td>${num(r.net_position, 4)}</td>
+          <td><button class="btnApprovePromotion" data-id="${e(r.strategy_id || '')}">批准晋级</button></td>
+        `;
+        body.appendChild(tr);
+      });
+
+      document.querySelectorAll('.btnApprovePromotion').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id') || '';
+          if (!id) return;
+          const th = thresholds();
+          const resp = await api('/api/performance/promotion/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ strategy_id: id, ...th }),
+          });
+          document.getElementById('promotionInfo').textContent = `晋级成功: strategy_id=${resp.strategy_id} file=${resp.file}`;
+          flash(`策略 ${id} 已通过晋级`, 'ok');
+          await refreshAll({ silent: true });
+        });
+      });
+    }
+
+    function collectModelAlloc() {
+      const rows = [...document.querySelectorAll('#modelAllocBody tr')];
+      const providers = rows
+        .map((tr) => {
+          const get = (f) => tr.querySelector(`[data-field="${f}"]`);
+          return {
+            provider_id: get('provider_id')?.value.trim() || '',
+            name: get('name')?.value.trim() || '',
+            company: get('company')?.value.trim() || 'custom',
+            endpoint: get('endpoint')?.value.trim() || '',
+            adapter: get('adapter')?.value.trim() || 'openclaw_compatible',
+            model: get('model')?.value.trim() || '',
+            api_key: get('api_key')?.value.trim() || '',
+            enabled: !!get('enabled')?.checked,
+            weight: Number(get('weight')?.value || 1),
+            priority: Number(get('priority')?.value || 100),
+          };
+        })
+        .filter((x) => x.provider_id);
+      return { mode: document.getElementById('allocMode').value, providers };
+    }
+
+    function addEmptyProviderRow() {
+      const cfg = state.modelAlloc || { mode: 'weighted', providers: [] };
+      const providers = [...(cfg.providers || [])];
+      const idx = providers.length + 1;
+      providers.push({
+        provider_id: `local-manual-${String(idx).padStart(3, '0')}`,
+        name: `ManualModel-${idx}`,
+        endpoint: '',
+        adapter: 'openclaw_compatible',
+        model: '',
+        company: 'custom',
+        api_key: '',
+        enabled: true,
+        weight: 1,
+        priority: 100 + idx,
+      });
+      state.modelAlloc = { mode: cfg.mode || 'weighted', providers };
+      renderModelAlloc();
+    }
+
+    async function loadRegisterCompanyModels() {
+      const company = document.getElementById('registerCompany').value.trim() || 'custom';
+      const endpoint = document.getElementById('registerEndpoint').value.trim();
+      const adapter = document.getElementById('registerAdapter').value.trim() || 'openai_compatible';
+      const api_key = document.getElementById('registerApiKey').value.trim();
+      const payload = { company, endpoint, adapter, api_key, limit: 20000 };
+
+      const resp = await api('/api/paper/models/catalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      state.registerCatalogRows = resp.rows || [];
+      const sel = document.getElementById('registerModelCatalog');
+      sel.innerHTML = '<option value="">从模型目录选择 model</option>';
+      state.registerCatalogRows.forEach((r) => {
+        const id = String(r.id || '').trim();
+        if (!id) return;
+        const name = String(r.name || id);
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = `${id} | ${name} | ctx=${r.context_length ?? '-'} | p=${r.prompt_price || '-'} c=${r.completion_price || '-'}`;
+        sel.appendChild(opt);
+      });
+
+      document.getElementById('registerCatalogInfo').textContent =
+        `company=${resp.company || company} | endpoint=${resp.endpoint || '-'} | models_endpoint=${resp.models_endpoint || '-'} | count=${resp.count || 0}`;
+    }
+
+    function applyCatalogModelToRegister() {
+      const sel = document.getElementById('registerModelCatalog');
+      const model = String(sel.value || '').trim();
+      if (!model) {
+        flash('请先从目录选择模型', 'warn');
+        return;
+      }
+      document.getElementById('registerModel').value = model;
+      flash(`已填入模型 ${model}`, 'ok');
+    }
+
+    async function loadStrategyDetail(strategyId, silent) {
+      const sid = String(strategyId || '').trim();
+      if (!sid) {
+        state.selectedStrategyId = '';
+        state.strategyDetail = null;
+        renderStrategyDetail();
+        return;
+      }
+      try {
+        const q = new URLSearchParams({
+          strategy_id: sid,
+          fills_limit: '80',
+          orders_limit: '80',
+          logs_limit: '200',
+        });
+        const detail = await api(`/api/paper/strategy-detail?${q.toString()}`);
+        state.selectedStrategyId = sid;
+        state.strategyDetail = detail || null;
+        renderStrategyDetail();
+      } catch (err) {
+        state.strategyDetail = null;
+        renderStrategyDetail();
+        if (!silent) flash(`加载策略明细失败: ${err}`, 'warn');
+      }
+    }
+
+    async function loadPromotionCandidates() {
+      const th = thresholds();
+      const q = new URLSearchParams({
+        min_pnl: String(th.min_pnl),
+        max_dd_pct: String(th.max_dd_pct),
+        min_trades: String(th.min_trades),
+        min_win_rate: String(th.min_win_rate),
+      });
+      const resp = await api(`/api/performance/promotion?${q.toString()}`);
+      state.promotionCandidates = resp.rows || [];
+      const ids = state.promotionCandidates.map((x) => x.strategy_id).join(', ');
+      document.getElementById('promotionInfo').textContent = `符合晋级数=${resp.count} strategy_ids=[${ids}]`;
+      renderPromotion();
+    }
+
+    async function refreshAll({ silent = false } = {}) {
+      if (refreshing) return;
+      refreshing = true;
+      const errors = [];
+      try {
+        const [
+          summary,
+          race,
+          model,
+          modelAlloc,
+          modelCompanies,
+          logs,
+          paperStatus,
+          paperOrders,
+          paperFills,
+          paperMarkets,
+          strategies,
+          perf,
+          workflow,
+        ] = await Promise.all([
+          apiSafe('/api/paper/latest-summary', {}, errors, 'latest-summary'),
+          apiSafe('/api/paper/latest-race', {}, errors, 'latest-race'),
+          apiSafe('/api/paper/model-dashboard', {}, errors, 'model-dashboard'),
+          apiSafe('/api/paper/models', { mode: 'weighted', providers: [] }, errors, 'models'),
+          apiSafe('/api/paper/models/companies', { rows: [] }, errors, 'model-companies'),
+          apiSafe('/api/paper/logs?limit=500', { rows: [] }, errors, 'logs'),
+          apiSafe('/api/paper/trading/status?limit=120', {}, errors, 'trading-status'),
+          apiSafe('/api/paper/trading/orders?limit=300&open_only=true', { rows: [] }, errors, 'trading-orders'),
+          apiSafe('/api/paper/trading/fills?limit=300', { rows: [] }, errors, 'trading-fills'),
+          apiSafe('/api/paper/markets?limit=30', { rows: [], source: '', warning: '' }, errors, 'paper-markets'),
+          apiSafe('/api/strategies', { rows: [] }, errors, 'strategies'),
+          apiSafe('/api/performance/strategies?limit=5000', { rows: [] }, errors, 'performance'),
+          apiSafe('/api/paper/workflow-status', {}, errors, 'workflow-status'),
+        ]);
+
+        state.summary = summary || {};
+        state.race = race || {};
+        state.model = model || {};
+        state.modelAlloc = modelAlloc || { mode: 'weighted', providers: [] };
+        state.modelCompanies = modelCompanies.rows || [];
+        state.logs = logs.rows || [];
+        state.paperStatus = paperStatus || {};
+        state.paperOrders = paperOrders.rows || [];
+        state.paperFills = paperFills.rows || [];
+        state.paperMarkets = (paperMarkets.rows || []).map((x) => ({ ...x, source: paperMarkets.source || '' }));
+        state.paperMarketsSource = paperMarkets.source || '';
+        state.paperMarketsWarning = paperMarkets.warning || '';
+        state.paperMarketsUpdated = paperMarkets.updated_at_utc || paperMarkets.cache_updated_at_utc || '';
+        state.strategies = strategies.rows || [];
+        state.perfRows = perf.rows || [];
+        state.workflow = workflow || {};
+
+        buildMaps();
+        renderSummary();
+        renderRace();
+        renderWorkflow();
+        renderModel();
+        renderModelAlloc();
+        renderStrategySelects();
+        renderStrategyBoard();
+        renderPaperTrade();
+        renderPaperOrders();
+        renderPaperFills();
+        renderPaperMarkets();
+        renderMarketQuotes();
+        renderLogs();
+        renderPromotion();
+        updateFlowActive();
+        await refreshMarketQuotes();
+
+        if (!state.selectedStrategyId && state.strategies.length > 0) {
+          await loadStrategyDetail(state.strategies[0].strategy_id, true);
+          renderStrategyBoard();
+        } else if (state.selectedStrategyId) {
+          const exists = state.strategies.some((x) => x.strategy_id === state.selectedStrategyId);
+          if (exists) {
+            await loadStrategyDetail(state.selectedStrategyId, true);
+            renderStrategyBoard();
+          } else {
+            state.selectedStrategyId = '';
+            state.strategyDetail = null;
+            renderStrategyDetail();
+            renderStrategyBoard();
+          }
+        } else {
+          renderStrategyDetail();
+        }
+
+        if (!silent) {
+          if (errors.length) {
+            flash(`部分接口失败(${errors.length})：${errors.slice(0, 2).join(' | ')}`, 'warn');
+          } else if (state.paperMarketsWarning) {
+            flash(`市场接口降级：${state.paperMarketsWarning}`, 'warn');
+          } else {
+            flash('全局数据刷新完成', 'ok');
+          }
+        }
+      } finally {
+        refreshing = false;
+      }
+    }
+
+    document.getElementById('btnRefresh').addEventListener('click', () => refreshAll());
+    document.getElementById('btnQuickRefresh').addEventListener('click', () => document.getElementById('btnRefresh').click());
+    document.getElementById('btnQuickGenerate').addEventListener('click', () => document.getElementById('btnGenerateStrategy').click());
+    document.getElementById('btnQuickStartBot').addEventListener('click', () => document.getElementById('btnPaperBotStart').click());
+    document.getElementById('btnQuickFilterPromotion').addEventListener('click', () => document.getElementById('btnPromotionFilter').click());
+    document.getElementById('btnReloadStrategies').addEventListener('click', () => refreshAll({ silent: true }));
+    document.getElementById('btnLogs').addEventListener('click', renderLogs);
+
+    document.getElementById('paperStrategySel').addEventListener('change', () => {
+      document.getElementById('paperStrategyId').value = document.getElementById('paperStrategySel').value || 'manual';
+    });
+
+    document.getElementById('btnModelCheck').addEventListener('click', async () => {
+      await api('/api/paper/model-check', { method: 'POST' });
+      flash('模型连通性检测已完成', 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnModelDiscover').addEventListener('click', async () => {
+      await api('/api/paper/models/discover', { method: 'POST' });
+      flash('已自动发现本地模型接口', 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnModelAddRow').addEventListener('click', addEmptyProviderRow);
+
+    document.getElementById('btnModelSave').addEventListener('click', async () => {
+      const payload = collectModelAlloc();
+      await api('/api/paper/models', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      flash(`路由配置已保存，provider=${payload.providers.length}`, 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('registerCompany').addEventListener('change', () => {
+      applyRegisterCompanyDefaults(true);
+    });
+
+    document.getElementById('btnRegisterLoadModels').addEventListener('click', async () => {
+      try {
+        await loadRegisterCompanyModels();
+        flash(`模型目录加载完成，count=${state.registerCatalogRows.length}`, 'ok');
+      } catch (err) {
+        flash(`加载模型目录失败: ${err}`, 'warn');
+      }
+    });
+
+    document.getElementById('btnUseCatalogModel').addEventListener('click', () => {
+      applyCatalogModelToRegister();
+    });
+
+    document.getElementById('btnModelRegister').addEventListener('click', async () => {
+      const payload = {
+        provider_id: document.getElementById('registerId').value.trim(),
+        name: document.getElementById('registerName').value.trim(),
+        company: document.getElementById('registerCompany').value.trim(),
+        endpoint: document.getElementById('registerEndpoint').value.trim(),
+        adapter: document.getElementById('registerAdapter').value.trim(),
+        model: document.getElementById('registerModel').value.trim(),
+        api_key: document.getElementById('registerApiKey').value.trim(),
+      };
+      if (!payload.provider_id) {
+        flash('provider_id 不能为空', 'warn');
+        return;
+      }
+      await api('/api/paper/models/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      flash(`模型 ${payload.provider_id} 已注册`, 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnGenerateStrategy').addEventListener('click', async () => {
+      const count = Number(document.getElementById('genCount').value || 6);
+      const provider_id = document.getElementById('genProvider').value;
+      const resp = await api('/api/strategies/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          count,
+          provider_id,
+          seed: Date.now() % 1000000,
+        }),
+      });
+      document.getElementById('genInfo').textContent =
+        `生成完成 count=${resp.count} provider_id=${resp.provider_id || 'auto'} company=${resp.company || '-'} adapter=${resp.adapter || '-'} model=${resp.model || '-'}`;
+      flash(`策略生成完成，数量=${resp.count}`, 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnStrategySave').addEventListener('click', async () => {
+      const strategy_id = document.getElementById('detailStrategyId').value.trim();
+      if (!strategy_id) {
+        flash('请先在左侧选择策略', 'warn');
+        return;
+      }
+      let params = {};
+      try {
+        params = JSON.parse(document.getElementById('detailParams').value || '{}');
+        if (!params || typeof params !== 'object' || Array.isArray(params)) {
+          throw new Error('params 必须是 JSON 对象');
+        }
+      } catch (err) {
+        flash(`参数 JSON 解析失败: ${err}`, 'warn');
+        return;
+      }
+      const payload = {
+        strategy_id,
+        name: document.getElementById('detailName').value.trim(),
+        strategy_type: document.getElementById('detailType').value,
+        enabled: !!document.getElementById('detailEnabled').checked,
+        params,
+      };
+      await api('/api/strategies/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      flash(`策略 ${strategy_id} 配置已保存`, 'ok');
+      await refreshAll({ silent: true });
+      await loadStrategyDetail(strategy_id, true);
+      renderStrategyBoard();
+    });
+
+    document.getElementById('btnStrategyReload').addEventListener('click', async () => {
+      const sid = document.getElementById('detailStrategyId').value.trim();
+      if (!sid) return;
+      await loadStrategyDetail(sid, false);
+      renderStrategyBoard();
+      flash(`已刷新策略 ${sid} 明细`, 'ok');
+    });
+
+    document.getElementById('btnStrategyUseOrder').addEventListener('click', () => {
+      const sid = document.getElementById('detailStrategyId').value.trim();
+      if (!sid) {
+        flash('请先选择策略', 'warn');
+        return;
+      }
+      document.getElementById('paperStrategyId').value = sid;
+      document.getElementById('paperStrategySel').value = sid;
+      document.getElementById('sec-trading').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      flash(`已将 ${sid} 设置为手动下单策略`, 'ok');
+    });
+
+    document.getElementById('btnLoadMarkets').addEventListener('click', async () => {
+      const markets = await api('/api/paper/markets?limit=30');
+      state.paperMarkets = (markets.rows || []).map((x) => ({ ...x, source: markets.source || '' }));
+      state.paperMarketsSource = markets.source || '';
+      state.paperMarketsWarning = markets.warning || '';
+      state.paperMarketsUpdated = markets.updated_at_utc || markets.cache_updated_at_utc || '';
+      renderPaperMarkets();
+      renderMarketQuotes();
+      await refreshMarketQuotes();
+      flash(`市场刷新完成，数量=${state.paperMarkets.length}`, 'ok');
+    });
+
+    document.getElementById('btnUseMarketToken').addEventListener('click', () => {
+      const sel = document.getElementById('paperMarketSel');
+      const token = sel.value.trim();
+      if (!token) return;
+      document.getElementById('paperToken').value = token;
+      document.getElementById('paperOrderToken').value = token;
+      const opt = sel.options[sel.selectedIndex];
+      const tick = opt?.dataset?.tick || '';
+      const minSize = opt?.dataset?.minSize || '';
+      document.getElementById('paperOrderTick').value = tick && tick !== 'None' ? tick : '';
+      document.getElementById('paperOrderMinSize').value = minSize && minSize !== 'None' ? minSize : '';
+      document.getElementById('paperRuleHint').textContent =
+        `token=${token} | tick=${tick || '-'} | min_size=${minSize || '-'} | fees_enabled=${opt?.dataset?.feesEnabled || '-'} | fee_type=${opt?.dataset?.feeType || '-'}`;
+      flash(`已填入 token=${token}`, 'ok');
+    });
+
+    document.getElementById('btnPaperBotStart').addEventListener('click', async () => {
+      const token_id = document.getElementById('paperToken').value.trim();
+      const interval_sec = Number(document.getElementById('paperInterval').value || 12);
+      const prefer_stream = !!document.getElementById('paperPreferStream').checked;
+      if (!token_id) {
+        flash('请先填写 token_id', 'warn');
+        return;
+      }
+      await api('/api/paper/trading/bot/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token_id, interval_sec, prefer_stream }),
+      });
+      flash(`模拟 Bot 已启动 token=${token_id}`, 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnPaperBotStop').addEventListener('click', async () => {
+      await api('/api/paper/trading/bot/stop', { method: 'POST' });
+      flash('模拟 Bot 已停止', 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnStreamStart').addEventListener('click', async () => {
+      const token = document.getElementById('paperToken').value.trim() || document.getElementById('paperOrderToken').value.trim();
+      const assets_ids = token ? [token] : [];
+      await api('/api/paper/stream/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assets_ids }),
+      });
+      flash(`行情流已启动${token ? `，订阅 token=${token}` : ''}`, 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnStreamStop').addEventListener('click', async () => {
+      await api('/api/paper/stream/stop', { method: 'POST' });
+      flash('行情流已停止', 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnPaperReset').addEventListener('click', async () => {
+      if (!confirm('确认重置模拟盘资金、订单和成交记录？')) return;
+      await api('/api/paper/trading/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      flash('模拟盘已重置', 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnPaperLimit').addEventListener('click', async () => {
+      const order_type = document.getElementById('paperLimitTif').value;
+      const expireSecRaw = optionalNumber(document.getElementById('paperGtdSec').value);
+      const payload = {
+        strategy_id: document.getElementById('paperStrategyId').value.trim() || 'manual',
+        token_id: document.getElementById('paperOrderToken').value.trim(),
+        side: document.getElementById('paperOrderSide').value,
+        price: Number(document.getElementById('paperOrderPrice').value || 0),
+        size: Number(document.getElementById('paperOrderSize').value || 0),
+        order_type,
+        expire_seconds: order_type === 'GTD' && expireSecRaw ? Math.max(1, Math.floor(expireSecRaw)) : null,
+        tick_size: optionalNumber(document.getElementById('paperOrderTick').value),
+        min_size: optionalNumber(document.getElementById('paperOrderMinSize').value),
+        fee_bps: optionalNumber(document.getElementById('paperOrderFeeBps').value),
+      };
+      const resp = await api('/api/paper/trading/orders/limit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      document.getElementById('paperOrderResp').textContent = j(resp);
+      flash(`限价单已提交 strategy=${payload.strategy_id}`, 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnPaperMarket').addEventListener('click', async () => {
+      const payload = {
+        strategy_id: document.getElementById('paperStrategyId').value.trim() || 'manual',
+        token_id: document.getElementById('paperOrderToken').value.trim(),
+        side: document.getElementById('paperOrderSide').value,
+        amount: Number(document.getElementById('paperOrderAmount').value || 0),
+        order_type: document.getElementById('paperMarketTif').value,
+        fee_bps: optionalNumber(document.getElementById('paperOrderFeeBps').value),
+      };
+      const resp = await api('/api/paper/trading/orders/market', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      document.getElementById('paperOrderResp').textContent = j(resp);
+      flash(`市价单已提交 strategy=${payload.strategy_id}`, 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnPaperCancelAll').addEventListener('click', async () => {
+      const resp = await api('/api/paper/trading/orders/cancel-all', { method: 'POST' });
+      document.getElementById('paperOrderResp').textContent = j(resp);
+      flash(`已全撤模拟单，count=${resp.cancelled ?? 0}`, 'ok');
+      await refreshAll({ silent: true });
+    });
+
+    document.getElementById('btnPromotionFilter').addEventListener('click', async () => {
+      await loadPromotionCandidates();
+      flash('晋级候选筛选完成', 'ok');
+    });
+
+    window.addEventListener('scroll', updateFlowActive, { passive: true });
+
+    (async () => {
+      try {
+        await refreshAll({ silent: true });
+        applyRegisterCompanyDefaults(false);
+        applyTokenFromQuery();
+        await loadPromotionCandidates();
+        updateFlowActive();
+        flash('系统就绪', 'ok');
+      } catch (err) {
+        flash(`初始化失败: ${err}`, 'bad');
+      }
+      setInterval(() => {
+        refreshAll({ silent: true }).catch(() => {});
+      }, 5000);
+    })();
+  </script>
+</body>
+</html>

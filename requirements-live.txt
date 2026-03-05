@@ -1,0 +1,4 @@
+fastapi
+uvicorn[standard]
+py-clob-client
+websockets

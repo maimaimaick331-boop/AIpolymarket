@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polymarket 全自动量化</title>
+  <style>
+    :root {
+      --bg: #e9f1fb;
+      --card: #ffffff;
+      --line: #d4dfef;
+      --ink: #16263c;
+      --muted: #59718f;
+      --brand: #1f4f7d;
+      --ok: #0f7c5f;
+      --warn: #b45309;
+      --bad: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(880px 320px at 5% -10%, #dbefff 0, transparent 72%),
+        radial-gradient(920px 400px at 95% -20%, #e4f8ee 0, transparent 75%),
+        var(--bg);
+    }
+    .page { max-width: 1320px; margin: 20px auto 34px; padding: 0 14px; }
+    .hero {
+      border-radius: 16px;
+      background: linear-gradient(120deg, #173b5f, #215682, #15716f);
+      color: #e8f6ff;
+      padding: 14px 16px;
+      box-shadow: 0 12px 26px rgba(16, 44, 70, .18);
+    }
+    .hero h1 { margin: 0; font-size: 30px; line-height: 1.15; }
+    .hero p { margin: 10px 0 0; color: #d0e6f7; line-height: 1.6; }
+    .hero .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .hero a {
+      color: #dbeeff; text-decoration: none; font-size: 13px;
+      border: 1px solid rgba(221, 238, 255, .52);
+      border-radius: 999px; padding: 5px 10px;
+      background: rgba(255, 255, 255, .08);
+    }
+    .sec {
+      margin-top: 12px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(17, 43, 66, .07);
+    }
+    .sh {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f6faff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sh h2 { margin: 0; font-size: 18px; color: #284f78; }
+    .tag {
+      border: 1px solid #cfe1f5;
+      border-radius: 999px;
+      background: #eaf3fd;
+      color: #355c84;
+      font-size: 12px;
+      padding: 2px 8px;
+    }
+    .sb { padding: 12px; }
+    .row {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .c2 { grid-column: span 2; }
+    .c3 { grid-column: span 3; }
+    .c4 { grid-column: span 4; }
+    .c6 { grid-column: span 6; }
+    .c8 { grid-column: span 8; }
+    .c12 { grid-column: span 12; }
+    input, select, textarea, button {
+      font: inherit;
+      border: 1px solid #bed0e6;
+      border-radius: 10px;
+      padding: 9px 10px;
+      color: #1e2d45;
+      background: #fff;
+    }
+    textarea { min-height: 70px; resize: vertical; }
+    button {
+      cursor: pointer;
+      border-color: #2f5f8f;
+      background: #2f5f8f;
+      color: #fff;
+      font-weight: 700;
+      min-height: 42px;
+    }
+    button.soft { background: #fff; color: #2b567f; border-color: #bfd0e7; }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .k {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      background: #fff;
+    }
+    .k .n { color: var(--muted); font-size: 12px; }
+    .k .v { margin-top: 4px; font-size: 22px; font-weight: 800; }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+    .muted { color: var(--muted); margin-bottom: 6px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .panel { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: #fbfdff; }
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; min-width: 880px; }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 7px 8px;
+      text-align: left;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+    th { background: #f4f8fd; color: #375b83; }
+    #eventBox {
+      min-height: 180px;
+      max-height: 300px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0f243f;
+      color: #d5e9ff;
+      padding: 10px;
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
+    #toast {
+      margin-top: 10px;
+      min-height: 40px;
+      border: 1px solid #c6d8ee;
+      border-radius: 10px;
+      background: #f6fbff;
+      color: #2f557c;
+      padding: 9px 10px;
+    }
+    @media (max-width: 1100px) {
+      .row, .grid, .kpis { grid-template-columns: 1fr; }
+      .c2, .c3, .c4, .c6, .c8, .c12 { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <h1>Polymarket 全自动量化交易系统</h1>
+      <p>架构: 市场数据引擎(A) -> 信号引擎(B) -> 风控引擎(C) -> 执行引擎(D) -> 调度器(Orchestrator)。</p>
+      <div class="actions">
+        <a href="/">入口</a>
+        <a href="/paper">模拟盘工作台</a>
+        <a href="/live">实盘页</a>
+      </div>
+    </header>
+
+    <section class="sec">
+      <div class="sh"><h2>调度器控制台</h2><span class="tag">A/B/C/D 编排</span></div>
+      <div class="sb">
+        <div class="row">
+          <select id="mode" class="c2">
+            <option value="paper">paper</option>
+            <option value="live">live</option>
+          </select>
+          <input id="cycleSec" class="c2" type="number" value="12" step="1" />
+          <input id="marketLimit" class="c2" type="number" value="120" step="1" />
+          <input id="maxBooks" class="c2" type="number" value="400" step="1" />
+          <input id="maxSignals" class="c2" type="number" value="16" step="1" />
+          <input id="providerId" class="c2" placeholder="AI provider_id(可空)" />
+        </div>
+        <div class="row">
+          <label class="c2"><input id="enableArb" type="checkbox" checked /> 套利检测器</label>
+          <label class="c2"><input id="enableMm" type="checkbox" checked /> 自动做市器</label>
+          <label class="c2"><input id="enableAi" type="checkbox" checked /> AI概率评估器</label>
+          <label class="c2"><input id="dryRun" type="checkbox" /> dry-run(不执行)</label>
+          <label class="c2"><input id="confirmLive" type="checkbox" /> 确认实盘</label>
+          <button id="btnRefreshMarkets" class="soft c2">刷新市场缓存</button>
+        </div>
+        <div class="row">
+          <input id="maxOrderUsdc" class="c2" type="number" value="25" step="0.1" />
+          <input id="maxExposure" class="c2" type="number" value="500" step="0.1" />
+          <input id="strategyLossLimit" class="c2" type="number" value="-50" step="0.1" />
+          <input id="accountLossLimit" class="c2" type="number" value="-100" step="0.1" />
+          <input id="lossStreak" class="c2" type="number" value="5" step="1" />
+          <input id="reduceScale" class="c2" type="number" value="0.5" step="0.1" />
+        </div>
+        <div class="row">
+          <label class="c2"><input id="enforceLiveGate" type="checkbox" checked /> 实盘强制72h门禁</label>
+          <input id="liveGateHours" class="c2" type="number" value="72" step="1" placeholder="门禁: min_hours" />
+          <input id="liveGateFills" class="c2" type="number" value="20" step="1" placeholder="门禁: min_fills" />
+          <input id="liveGatePnl" class="c2" type="number" value="0" step="0.1" placeholder="门禁: min_pnl" />
+          <input id="liveGateWin" class="c2" type="number" value="0.45" step="0.01" placeholder="门禁: min_win_rate" />
+          <label class="c2"><input id="raceEnabled" type="checkbox" checked /> 模拟盘赛马淘汰</label>
+        </div>
+        <div class="row">
+          <input id="raceMinFills" class="c2" type="number" value="12" step="1" placeholder="赛马: min_fills" />
+          <input id="raceMinWinRate" class="c2" type="number" value="0.40" step="0.01" placeholder="赛马: min_win_rate" />
+          <input id="raceMinPnl" class="c2" type="number" value="0" step="0.1" placeholder="赛马: min_pnl" />
+          <input id="raceLookback" class="c2" type="number" value="24" step="1" placeholder="赛马: lookback(h)" />
+          <input id="mmLiqMin" class="c2" type="number" value="1000" step="1" placeholder="MM: liq_min" />
+          <input id="mmLiqMax" class="c2" type="number" value="120000" step="1" placeholder="MM: liq_max" />
+        </div>
+        <div class="row">
+          <input id="mmMinSpread" class="c2" type="number" value="0.02" step="0.001" placeholder="MM: min_spread" />
+          <input id="mmMaxPosition" class="c2" type="number" value="120" step="1" placeholder="MM: 单边仓位上限" />
+          <input id="mmSkew" class="c2" type="number" value="1" step="0.1" placeholder="MM: 库存偏斜强度" />
+          <label class="c2"><input id="mmShortSell" type="checkbox" /> MM允许裸卖空</label>
+          <label class="c2"><input id="mmTakerRebalance" type="checkbox" checked /> MM启用taker再平衡</label>
+          <input id="aiDevThreshold" class="c2" type="number" value="0.15" step="0.01" placeholder="AI: deviation阈值" />
+        </div>
+        <div class="row">
+          <input id="aiMinConf" class="c2" type="number" value="0.70" step="0.01" placeholder="AI: min_confidence" />
+          <input id="aiEvalInterval" class="c2" type="number" value="3600" step="1" placeholder="AI: 评估间隔(s)" />
+          <input id="aiMaxMarkets" class="c2" type="number" value="6" step="1" placeholder="AI: 每轮市场数" />
+          <input id="arbBuyThreshold" class="c2" type="number" value="0.99" step="0.001" placeholder="ARB: buy阈值" />
+          <input id="arbSellThreshold" class="c2" type="number" value="1.01" step="0.001" placeholder="ARB: sell阈值" />
+          <input id="feeBuffer" class="c2" type="number" value="0.02" step="0.001" placeholder="手续费缓冲" />
+        </div>
+        <div class="row">
+          <textarea id="aiPrompt" class="c12" placeholder="AI概率评估补充提示词（可空）"></textarea>
+        </div>
+        <div class="row">
+          <button id="btnStart" class="c3">启动调度器</button>
+          <button id="btnStop" class="soft c3">停止调度器</button>
+          <button id="btnRunOnce" class="soft c3">执行单轮</button>
+          <button id="btnReload" class="soft c3">刷新数据</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sh"><h2>实时状态</h2><span class="tag">Runtime</span></div>
+      <div class="sb">
+        <div id="kpis" class="kpis"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sh"><h2>赛马与实盘门禁</h2><span class="tag">Race / 72h Gate</span></div>
+      <div class="sb grid">
+        <div class="panel">
+          <div class="muted">策略绩效（最近24h，paper）</div>
+          <div class="table-wrap"><table><thead><tr><th>strategy</th><th>fills</th><th>win%</th><th>pnl</th><th>runtime(h)</th></tr></thead><tbody id="perfBody"></tbody></table></div>
+        </div>
+        <div class="panel">
+          <div class="muted">72小时实盘门禁</div>
+          <div class="table-wrap"><table><thead><tr><th>strategy</th><th>eligible</th><th>fills</th><th>win%</th><th>pnl</th><th>reason</th></tr></thead><tbody id="gateBody"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sh"><h2>模块输出</h2><span class="tag">Market / Signal / Order</span></div>
+      <div class="sb grid">
+        <div class="panel">
+          <div class="muted">市场摘要（A）</div>
+          <div class="table-wrap"><table><thead><tr><th>market</th><th>liq</th><th>Yes</th><th>No</th><th>sum</th><th>updated</th></tr></thead><tbody id="marketBody"></tbody></table></div>
+        </div>
+        <div class="panel">
+          <div class="muted">信号日志（B）</div>
+          <div class="table-wrap"><table><thead><tr><th>time</th><th>strategy</th><th>type</th><th>side</th><th>score</th><th>status</th><th>msg</th></tr></thead><tbody id="signalBody"></tbody></table></div>
+        </div>
+        <div class="panel">
+          <div class="muted">订单执行（D）</div>
+          <div class="table-wrap"><table><thead><tr><th>time</th><th>mode</th><th>strategy</th><th>side</th><th>token</th><th>price</th><th>size</th><th>status</th></tr></thead><tbody id="orderBody"></tbody></table></div>
+        </div>
+        <div class="panel">
+          <div class="muted">成交记录（D）</div>
+          <div class="table-wrap"><table><thead><tr><th>time</th><th>mode</th><th>strategy</th><th>side</th><th>price</th><th>size</th><th>fee</th><th>pnlΔ</th></tr></thead><tbody id="fillBody"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sh"><h2>风控与事件</h2><span class="tag">C / Logs</span></div>
+      <div class="sb grid">
+        <div class="panel">
+          <div class="muted">风控快照</div>
+          <pre id="riskBox" class="mono" style="min-height:220px;background:#f8fbff;border:1px solid var(--line);border-radius:10px;padding:10px;"></pre>
+        </div>
+        <div class="panel">
+          <div class="muted">调度事件</div>
+          <pre id="eventBox"></pre>
+        </div>
+      </div>
+    </section>
+
+    <div id="toast">初始化中...</div>
+  </div>
+
+  <script>
+    const state = {
+      status: {},
+      markets: [],
+      signals: [],
+      orders: [],
+      fills: [],
+      events: [],
+      risk: {},
+      perf: [],
+      gate: {},
+    };
+    let timer = null;
+
+    function e(v) {
+      return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function n(v, d = 4) {
+      const x = Number(v);
+      return Number.isFinite(x) ? x.toFixed(d) : '-';
+    }
+    function flash(msg, cls = '') {
+      const el = document.getElementById('toast');
+      el.className = cls;
+      el.textContent = String(msg || '');
+    }
+    async function api(path, options) {
+      const resp = await fetch(path, options);
+      const txt = await resp.text();
+      let body;
+      try { body = txt ? JSON.parse(txt) : {}; } catch { body = txt; }
+      if (!resp.ok) {
+        const msg = (body && typeof body === 'object' && body.detail) ? body.detail : `HTTP ${resp.status}`;
+        throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      }
+      return body;
+    }
+    async function apiSafe(path, fallback = {}) {
+      try { return await api(path); } catch { return fallback; }
+    }
+
+    function payload() {
+      return {
+        mode: document.getElementById('mode').value || 'paper',
+        cycle_sec: Number(document.getElementById('cycleSec').value || 12),
+        market_limit: Number(document.getElementById('marketLimit').value || 120),
+        max_books: Number(document.getElementById('maxBooks').value || 400),
+        max_signals_per_cycle: Number(document.getElementById('maxSignals').value || 16),
+        provider_id: document.getElementById('providerId').value.trim(),
+        ai_prompt: document.getElementById('aiPrompt').value.trim(),
+        enable_arb: !!document.getElementById('enableArb').checked,
+        enable_mm: !!document.getElementById('enableMm').checked,
+        enable_ai: !!document.getElementById('enableAi').checked,
+        dry_run: !!document.getElementById('dryRun').checked,
+        confirm_live: !!document.getElementById('confirmLive').checked,
+        max_order_usdc: Number(document.getElementById('maxOrderUsdc').value || 25),
+        max_total_exposure_usdc: Number(document.getElementById('maxExposure').value || 500),
+        strategy_daily_loss_limit: Number(document.getElementById('strategyLossLimit').value || -50),
+        account_daily_loss_limit: Number(document.getElementById('accountLossLimit').value || -100),
+        loss_streak_limit: Number(document.getElementById('lossStreak').value || 5),
+        reduced_size_scale: Number(document.getElementById('reduceScale').value || 0.5),
+        enforce_live_gate: !!document.getElementById('enforceLiveGate').checked,
+        live_gate_min_hours: Number(document.getElementById('liveGateHours').value || 72),
+        live_gate_min_fills: Number(document.getElementById('liveGateFills').value || 20),
+        live_gate_min_pnl: Number(document.getElementById('liveGatePnl').value || 0),
+        live_gate_min_win_rate: Number(document.getElementById('liveGateWin').value || 0.45),
+        race_enabled: !!document.getElementById('raceEnabled').checked,
+        race_min_fills: Number(document.getElementById('raceMinFills').value || 12),
+        race_min_win_rate: Number(document.getElementById('raceMinWinRate').value || 0.4),
+        race_min_pnl: Number(document.getElementById('raceMinPnl').value || 0),
+        race_lookback_hours: Number(document.getElementById('raceLookback').value || 24),
+        mm_liq_min: Number(document.getElementById('mmLiqMin').value || 1000),
+        mm_liq_max: Number(document.getElementById('mmLiqMax').value || 120000),
+        mm_min_spread: Number(document.getElementById('mmMinSpread').value || 0.02),
+        mm_max_single_side_position_usdc: Number(document.getElementById('mmMaxPosition').value || 120),
+        mm_inventory_skew_strength: Number(document.getElementById('mmSkew').value || 1),
+        mm_allow_short_sell: !!document.getElementById('mmShortSell').checked,
+        mm_taker_rebalance: !!document.getElementById('mmTakerRebalance').checked,
+        ai_deviation_threshold: Number(document.getElementById('aiDevThreshold').value || 0.15),
+        ai_min_confidence: Number(document.getElementById('aiMinConf').value || 0.7),
+        ai_eval_interval_sec: Number(document.getElementById('aiEvalInterval').value || 3600),
+        ai_max_markets_per_cycle: Number(document.getElementById('aiMaxMarkets').value || 6),
+        arb_buy_threshold: Number(document.getElementById('arbBuyThreshold').value || 0.99),
+        arb_sell_threshold: Number(document.getElementById('arbSellThreshold').value || 1.01),
+        fee_buffer: Number(document.getElementById('feeBuffer').value || 0.02),
+      };
+    }
+
+    function renderKpis() {
+      const s = state.status || {};
+      const db = s.db || {};
+      const counts = db.counts || {};
+      const risk = state.risk || {};
+      const acct = risk.account || {};
+      const rows = [
+        ['运行状态', s.running ? 'running' : 'stopped'],
+        ['阶段', s.phase || 'idle'],
+        ['轮次', Number(s.cycle || 0)],
+        ['信号数', Number(counts.q_signal || 0)],
+        ['订单数', Number(counts.q_order || 0)],
+        ['成交数', Number(counts.q_fill || 0)],
+        ['账户日PnL', n(acct.daily_pnl, 4)],
+        ['账户可交易', Number(acct.trading_enabled || 0) ? '是' : '否'],
+        ['门禁达标策略', `${Number(((state.gate || {}).eligible_count || 0))}/${Number(((state.gate || {}).count || 0))}`],
+        ['最新错误', s.last_error || '-'],
+        ['市场数', Number(counts.q_market || 0)],
+        ['token数', Number(counts.q_market_book || 0)],
+        ['更新时间', s.updated_at_utc || '-'],
+      ];
+      document.getElementById('kpis').innerHTML = rows.map(([k, v]) => `
+        <div class="k"><div class="n">${e(k)}</div><div class="v ${String(v).includes('否') || String(v).includes('stopped') ? 'warn' : 'ok'}">${e(v)}</div></div>
+      `).join('');
+    }
+
+    function renderMarkets() {
+      const body = document.getElementById('marketBody');
+      body.innerHTML = '';
+      (state.markets || []).slice(0, 120).forEach((m) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${e((m.question || '').slice(0, 64))}</td>
+          <td>${n(m.liquidity, 2)}</td>
+          <td>${n(m.yes_best_ask, 4)}</td>
+          <td>${n(m.no_best_ask, 4)}</td>
+          <td>${n(Number(m.yes_best_ask || 0) + Number(m.no_best_ask || 0), 4)}</td>
+          <td class="mono">${e(m.updated_at_utc || '')}</td>
+        `;
+        body.appendChild(tr);
+      });
+      if (!body.innerHTML) body.innerHTML = '<tr><td colspan="6">暂无市场数据</td></tr>';
+    }
+
+    function renderSignals() {
+      const body = document.getElementById('signalBody');
+      body.innerHTML = '';
+      (state.signals || []).slice(0, 200).forEach((r) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${e(r.time_utc || '')}</td>
+          <td>${e(r.strategy_id || '')}</td>
+          <td>${e(r.signal_type || '')}</td>
+          <td>${e(r.side || '')}</td>
+          <td>${n(r.score, 4)}</td>
+          <td>${e(r.status || '')}</td>
+          <td>${e((r.status_message || '').slice(0, 90))}</td>
+        `;
+        body.appendChild(tr);
+      });
+      if (!body.innerHTML) body.innerHTML = '<tr><td colspan="7">暂无信号</td></tr>';
+    }
+
+    function renderOrders() {
+      const body = document.getElementById('orderBody');
+      body.innerHTML = '';
+      (state.orders || []).slice(0, 200).forEach((r) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${e(r.time_utc || '')}</td>
+          <td>${e(r.mode || '')}</td>
+          <td>${e(r.strategy_id || '')}</td>
+          <td>${e(r.side || '')}</td>
+          <td class="mono">${e((r.token_id || '').slice(0, 16))}</td>
+          <td>${n(r.price, 4)}</td>
+          <td>${n(r.size, 4)}</td>
+          <td>${e(r.status || '')}</td>
+        `;
+        body.appendChild(tr);
+      });
+      if (!body.innerHTML) body.innerHTML = '<tr><td colspan="8">暂无订单</td></tr>';
+    }
+
+    function renderFills() {
+      const body = document.getElementById('fillBody');
+      body.innerHTML = '';
+      (state.fills || []).slice(0, 200).forEach((r) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${e(r.time_utc || '')}</td>
+          <td>${e(r.mode || '')}</td>
+          <td>${e(r.strategy_id || '')}</td>
+          <td>${e(r.side || '')}</td>
+          <td>${n(r.price, 4)}</td>
+          <td>${n(r.size, 4)}</td>
+          <td>${n(r.fee, 6)}</td>
+          <td>${n(r.pnl_delta, 4)}</td>
+        `;
+        body.appendChild(tr);
+      });
+      if (!body.innerHTML) body.innerHTML = '<tr><td colspan="8">暂无成交</td></tr>';
+    }
+
+    function renderPerf() {
+      const body = document.getElementById('perfBody');
+      body.innerHTML = '';
+      (state.perf || []).slice(0, 80).forEach((r) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${e(r.strategy_id || '')}</td>
+          <td>${Number(r.fills_count || 0)}</td>
+          <td>${n(Number(r.win_rate || 0) * 100, 1)}%</td>
+          <td class="${Number(r.pnl_total || 0) >= 0 ? 'ok' : 'bad'}">${n(r.pnl_total, 4)}</td>
+          <td>${n(r.runtime_hours, 2)}</td>
+        `;
+        body.appendChild(tr);
+      });
+      if (!body.innerHTML) body.innerHTML = '<tr><td colspan="5">暂无绩效样本</td></tr>';
+    }
+
+    function renderGate() {
+      const body = document.getElementById('gateBody');
+      body.innerHTML = '';
+      const rows = (state.gate || {}).rows || [];
+      rows.slice(0, 20).forEach((r) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${e(r.strategy_id || '')}</td>
+          <td class="${r.eligible ? 'ok' : 'warn'}">${r.eligible ? '是' : '否'}</td>
+          <td>${Number(r.fills_count || 0)}</td>
+          <td>${n(Number(r.win_rate || 0) * 100, 1)}%</td>
+          <td class="${Number(r.pnl_total || 0) >= 0 ? 'ok' : 'bad'}">${n(r.pnl_total, 4)}</td>
+          <td>${e(((r.reasons || []).join(' | ') || '-').slice(0, 90))}</td>
+        `;
+        body.appendChild(tr);
+      });
+      if (!body.innerHTML) body.innerHTML = '<tr><td colspan="6">暂无门禁数据</td></tr>';
+    }
+
+    function renderRisk() {
+      document.getElementById('riskBox').textContent = JSON.stringify(state.risk || {}, null, 2);
+    }
+
+    function renderEvents() {
+      const lines = (state.events || []).slice(0, 120).map((x) => {
+        return `[${x.time_utc || '-'}] ${x.kind || '-'} | ${x.message || ''}`;
+      });
+      document.getElementById('eventBox').textContent = lines.length ? lines.join('\n') : '暂无事件';
+    }
+
+    async function loadAll() {
+      const [status, markets, signals, orders, fills, events, risk, perf, gate] = await Promise.all([
+        apiSafe('/api/quant/status', {}),
+        apiSafe('/api/quant/markets?limit=150', { rows: [] }),
+        apiSafe('/api/quant/signals?limit=250', { rows: [] }),
+        apiSafe('/api/quant/orders?limit=250', { rows: [] }),
+        apiSafe('/api/quant/fills?limit=250', { rows: [] }),
+        apiSafe('/api/quant/events?limit=250', { rows: [] }),
+        apiSafe('/api/quant/risk', {}),
+        apiSafe('/api/quant/performance?mode=paper&hours=24', { rows: [] }),
+        apiSafe('/api/quant/live-gate', { rows: [] }),
+      ]);
+      state.status = status || {};
+      state.markets = markets.rows || [];
+      state.signals = signals.rows || [];
+      state.orders = orders.rows || [];
+      state.fills = fills.rows || [];
+      state.events = events.rows || [];
+      state.risk = risk || {};
+      state.perf = perf.rows || [];
+      state.gate = gate || {};
+      renderKpis();
+      renderPerf();
+      renderGate();
+      renderMarkets();
+      renderSignals();
+      renderOrders();
+      renderFills();
+      renderRisk();
+      renderEvents();
+    }
+
+    async function start() {
+      await api('/api/quant/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload()),
+      });
+      await loadAll();
+      flash('调度器已启动', 'ok');
+    }
+    async function stop() {
+      await api('/api/quant/stop', { method: 'POST' });
+      await loadAll();
+      flash('调度器已停止', 'ok');
+    }
+    async function runOnce() {
+      const out = await api('/api/quant/run-once', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload()),
+      });
+      await loadAll();
+      flash(`单轮执行完成: signals=${((out.summary || {}).signals_created || 0)} executed=${((out.summary || {}).signals_executed || 0)}`, 'ok');
+    }
+    async function refreshMarkets() {
+      await api('/api/quant/refresh-markets?limit=180&max_books=600', { method: 'POST' });
+      await loadAll();
+      flash('市场缓存已刷新', 'ok');
+    }
+
+    document.getElementById('btnStart').addEventListener('click', () => start().catch((err) => flash(`启动失败: ${err}`, 'bad')));
+    document.getElementById('btnStop').addEventListener('click', () => stop().catch((err) => flash(`停止失败: ${err}`, 'bad')));
+    document.getElementById('btnRunOnce').addEventListener('click', () => runOnce().catch((err) => flash(`执行失败: ${err}`, 'bad')));
+    document.getElementById('btnReload').addEventListener('click', () => loadAll().then(() => flash('数据已刷新', 'ok')).catch((err) => flash(`刷新失败: ${err}`, 'bad')));
+    document.getElementById('btnRefreshMarkets').addEventListener('click', () => refreshMarkets().catch((err) => flash(`刷新市场失败: ${err}`, 'bad')));
+
+    (async () => {
+      try {
+        await loadAll();
+        flash('系统就绪', 'ok');
+      } catch (err) {
+        flash(`初始化失败: ${err}`, 'bad');
+      }
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => {
+        loadAll().catch(() => {});
+      }, 3000);
+    })();
+  </script>
+</body>
+</html>
