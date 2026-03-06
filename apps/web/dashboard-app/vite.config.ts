@@ -7,6 +7,7 @@ export default defineConfig({
   base: '/static/dashboard/',
   build: {
     outDir: path.resolve(__dirname, '../static/dashboard'),
-    emptyOutDir: true,
+    // Keep previous hashed assets so stale cached HTML does not hard-white-screen on rollout.
+    emptyOutDir: false,
   },
 });

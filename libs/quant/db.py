@@ -48,6 +48,12 @@ class QuantDB:
         self._lock = threading.Lock()
         self._init_schema()
 
+    def _open_read_conn(self) -> sqlite3.Connection:
+        """Open a short-lived read connection to avoid API starvation under write-heavy loops."""
+        conn = sqlite3.connect(str(self.db_path), check_same_thread=False, isolation_level=None, timeout=3.0)
+        conn.row_factory = sqlite3.Row
+        return conn
+
     def _init_schema(self) -> None:
         schema = """
         PRAGMA journal_mode=WAL;
@@ -1021,16 +1027,16 @@ class QuantDB:
         return out
 
     def fetch_one(self, sql: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | None:
-        with self._lock:
-            cur = self._conn.execute(sql, params)
+        with self._open_read_conn() as conn:
+            cur = conn.execute(sql, params)
             row = cur.fetchone()
         if row is None:
             return None
         return {k: row[k] for k in row.keys()}
 
     def fetch_all(self, sql: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
-        with self._lock:
-            cur = self._conn.execute(sql, params)
+        with self._open_read_conn() as conn:
+            cur = conn.execute(sql, params)
             rows = cur.fetchall()
         out: list[dict[str, Any]] = []
         for row in rows:

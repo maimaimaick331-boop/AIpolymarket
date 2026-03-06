@@ -67,6 +67,7 @@ from libs.quant import (
 
 APP_ROOT = Path(__file__).resolve().parent
 STATIC_DIR = APP_ROOT / 'static'
+ENV_FILE = Path(__file__).resolve().parent.parent.parent / '.env'
 settings = load_settings()
 
 strategy_store = LiveStrategyStore(settings.paper_dir / 'live')
@@ -815,6 +816,39 @@ class StrategyRollbackIn(BaseModel):
     note: str = ''
 
 
+class LiveCredentialsResponse(BaseModel):
+    live_trading_enabled: bool = False
+    live_force_ack: bool = False
+    live_max_order_usdc: float = 25.0
+    live_host: str = ''
+    chain_id: int = 137
+    signature_type: int = 0
+    has_private_key: bool = False
+    private_key_masked: str = ''
+    has_funder: bool = False
+    funder_masked: str = ''
+    has_api_key: bool = False
+    api_key_masked: str = ''
+    has_api_secret: bool = False
+    api_secret_masked: str = ''
+    has_api_passphrase: bool = False
+    api_passphrase_masked: str = ''
+
+
+class LiveCredentialsSaveIn(BaseModel):
+    live_trading_enabled: bool | None = None
+    live_force_ack: bool | None = None
+    live_max_order_usdc: float | None = None
+    live_host: str | None = None
+    chain_id: int | None = None
+    signature_type: int | None = None
+    private_key: str | None = None
+    funder: str | None = None
+    api_key: str | None = None
+    api_secret: str | None = None
+    api_passphrase: str | None = None
+
+
 def _live_client() -> PolymarketLiveClient:
     cfg = LiveClientConfig(
         host=settings.live_host,
@@ -1317,6 +1351,115 @@ def _mask_secret(value: str) -> str:
     if len(s) <= 6:
         return '*' * len(s)
     return f'{s[:3]}***{s[-3:]}'
+
+
+def _read_env_file() -> dict[str, str]:
+    """读取 .env 文件，返回 key->value 字典（不影响当前进程环境变量）"""
+    env_path = ENV_FILE
+    if not env_path.exists():
+        return {}
+    result: dict[str, str] = {}
+    for line in env_path.read_text(encoding='utf-8').splitlines():
+        raw = line.strip()
+        if not raw or raw.startswith('#'):
+            continue
+        if '=' not in raw:
+            continue
+        key, _, value = raw.partition('=')
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+            value = value[1:-1]
+        result[key] = value
+    return result
+
+
+def _update_env_file(updates: dict[str, str]) -> None:
+    """更新 .env 文件中的指定 KEY=VALUE，保持其他行不变"""
+    env_path = ENV_FILE
+    lines: list[str] = []
+    if env_path.exists():
+        lines = env_path.read_text(encoding='utf-8').splitlines()
+
+    updated_keys: set[str] = set()
+    new_lines: list[str] = []
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#') or '=' not in stripped:
+            new_lines.append(line)
+            continue
+        key = stripped.split('=', 1)[0].strip()
+        if key in updates:
+            safe_value = str(updates[key]).replace('\n', '').replace('\r', '')
+            new_lines.append(f'{key}={safe_value}')
+            updated_keys.add(key)
+        else:
+            new_lines.append(line)
+
+    for key, value in updates.items():
+        if key in updated_keys:
+            continue
+        safe_value = str(value).replace('\n', '').replace('\r', '')
+        new_lines.append(f'{key}={safe_value}')
+
+    env_path.write_text('\n'.join(new_lines) + '\n', encoding='utf-8')
+
+
+def _env_bool(value: str | None, default: bool) -> bool:
+    if value is None:
+        return default
+    raw = str(value).strip().lower()
+    if raw in {'1', 'true', 'yes', 'on'}:
+        return True
+    if raw in {'0', 'false', 'no', 'off'}:
+        return False
+    return default
+
+
+def _env_int(value: str | None, default: int) -> int:
+    if value is None:
+        return default
+    try:
+        return int(str(value).strip())
+    except Exception:
+        return default
+
+
+def _env_float(value: str | None, default: float) -> float:
+    if value is None:
+        return default
+    try:
+        return float(str(value).strip())
+    except Exception:
+        return default
+
+
+def _build_live_credentials_response(env_map: dict[str, str]) -> LiveCredentialsResponse:
+    private_key = str(env_map.get('POLYMARKET_PRIVATE_KEY', '')).strip()
+    funder = str(env_map.get('POLYMARKET_FUNDER', '')).strip()
+    api_key = str(env_map.get('POLYMARKET_API_KEY', '')).strip()
+    api_secret = str(env_map.get('POLYMARKET_API_SECRET', '')).strip()
+    api_passphrase = str(env_map.get('POLYMARKET_API_PASSPHRASE', '')).strip()
+
+    return LiveCredentialsResponse(
+        live_trading_enabled=_env_bool(env_map.get('LIVE_TRADING_ENABLED'), False),
+        live_force_ack=_env_bool(env_map.get('LIVE_FORCE_ACK'), False),
+        live_max_order_usdc=_env_float(env_map.get('LIVE_MAX_ORDER_USDC'), 25.0),
+        live_host=str(env_map.get('POLYMARKET_LIVE_HOST', '')).strip(),
+        chain_id=_env_int(env_map.get('POLYMARKET_CHAIN_ID'), 137),
+        signature_type=_env_int(env_map.get('POLYMARKET_SIGNATURE_TYPE'), 0),
+        has_private_key=bool(private_key),
+        private_key_masked=_mask_secret(private_key),
+        has_funder=bool(funder),
+        funder_masked=_mask_secret(funder),
+        has_api_key=bool(api_key),
+        api_key_masked=_mask_secret(api_key),
+        has_api_secret=bool(api_secret),
+        api_secret_masked=_mask_secret(api_secret),
+        has_api_passphrase=bool(api_passphrase),
+        api_passphrase_masked=_mask_secret(api_passphrase),
+    )
 
 
 def _provider_public_payload(p: ModelProvider) -> dict[str, Any]:
@@ -2178,7 +2321,11 @@ def _workshop_map_to_runtime(draft: dict[str, Any]) -> tuple[str, dict[str, Any]
 
 def _migrate_workshop_strategies_once() -> dict[str, int]:
     global workshop_migration_done
-    with workshop_migration_lock:
+    # Do not block API requests on migration lock contention.
+    acquired = workshop_migration_lock.acquire(timeout=0.05)
+    if not acquired:
+        return {'checked': 0, 'migrated': 0}
+    try:
         if workshop_migration_done:
             return {'checked': 0, 'migrated': 0}
 
@@ -2281,6 +2428,8 @@ def _migrate_workshop_strategies_once() -> dict[str, int]:
             strategy_store.save_strategies(out_rows)
         workshop_migration_done = True
         return {'checked': checked, 'migrated': migrated}
+    finally:
+        workshop_migration_lock.release()
 
 
 def _workshop_write_signal_template(
@@ -2549,6 +2698,18 @@ def _resolve_market_name_zh_en(market_id: str, name_en: str, trans_map: dict[str
     return en or mid, en or mid
 
 
+def _enqueue_market_translations_from_rows(rows: list[dict[str, Any]] | None) -> None:
+    if not isinstance(rows, list):
+        return
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        market_id = str(row.get('market_id') or row.get('id') or '').strip()
+        question = str(row.get('question') or row.get('name_en') or row.get('name') or '').strip()
+        if market_id and question:
+            _enqueue_market_translation(market_id, question)
+
+
 def _quant_token_market_map() -> dict[str, str]:
     out: dict[str, str] = {}
     rows = quant_db.list_markets(limit=2000)
@@ -2639,8 +2800,10 @@ def _signal_reason_text(reason: Any, signal_type: str = '') -> str:
     return ''
 
 
-def _recent_signals_by_strategy(limit: int = 2500) -> dict[str, list[dict[str, Any]]]:
-    rows = quant_db.list_signals(limit=max(1, min(limit, 5000)))
+def _recent_signals_by_strategy(limit: int = 2500, *, include_quant: bool = True) -> dict[str, list[dict[str, Any]]]:
+    rows: list[dict[str, Any]] = []
+    if include_quant:
+        rows = quant_db.list_signals(limit=max(1, min(limit, 5000)))
     out: dict[str, list[dict[str, Any]]] = {}
 
     def _append_recent(sid: str, item: dict[str, Any]) -> None:
@@ -2713,65 +2876,66 @@ def _recent_signals_by_strategy(limit: int = 2500) -> dict[str, list[dict[str, A
         _append_recent(sid, item)
 
     # Supplement quant scan summaries so "无机会"也能可视化，而不是误解为策略停摆。
-    evt_rows = quant_db.list_events(limit=max(200, min(limit * 2, 2000)))
-    for row in evt_rows:
-        if not isinstance(row, dict):
-            continue
-        kind = str(row.get('kind', '')).strip()
-        if kind not in {'arb_scan_summary', 'mm_scan', 'ai_scan_summary'}:
-            continue
-        sid = ''
-        side = 'SCAN'
-        status = 'checked'
-        reason = ''
-        try:
-            payload = json.loads(str(row.get('payload_json', '{}')))
-        except Exception:
-            payload = {}
-        if not isinstance(payload, dict):
-            payload = {}
+    if include_quant:
+        evt_rows = quant_db.list_events(limit=max(200, min(limit * 2, 2000)))
+        for row in evt_rows:
+            if not isinstance(row, dict):
+                continue
+            kind = str(row.get('kind', '')).strip()
+            if kind not in {'arb_scan_summary', 'mm_scan', 'ai_scan_summary'}:
+                continue
+            sid = ''
+            side = 'SCAN'
+            status = 'checked'
+            reason = ''
+            try:
+                payload = json.loads(str(row.get('payload_json', '{}')))
+            except Exception:
+                payload = {}
+            if not isinstance(payload, dict):
+                payload = {}
 
-        if kind == 'arb_scan_summary':
-            sid = 'arb_detector'
-            markets = int(payload.get('markets', 0))
-            min_buy_sum = _safe_float(payload.get('min_buy_sum', 0.0))
-            max_sell_sum = _safe_float(payload.get('max_sell_sum', 0.0))
-            buy_threshold = _safe_float(payload.get('buy_threshold', quant_signal_engine.arb_buy_threshold))
-            sell_threshold = _safe_float(payload.get('sell_threshold', quant_signal_engine.arb_sell_threshold))
-            if markets <= 0:
-                reason = '未扫描到可用市场'
-            elif min_buy_sum >= buy_threshold and max_sell_sum <= sell_threshold:
-                reason = (
-                    f"已扫描 {markets} 市场，最小Yes+No={min_buy_sum:.4f}，最大Yes+No={max_sell_sum:.4f}，无套利机会"
-                )
-            else:
-                reason = (
-                    f"已扫描 {markets} 市场，最小Yes+No={min_buy_sum:.4f}，最大Yes+No={max_sell_sum:.4f}，存在候选机会"
-                )
-        elif kind == 'mm_scan':
-            sid = 'market_maker'
-            scanned = int(payload.get('scanned_markets', 0))
-            strict = int(payload.get('strict_candidates', 0))
-            selected = int(payload.get('selected_markets', 0))
-            reason = f"已扫描 {scanned} 市场，符合做市条件 {strict}，本轮选中 {selected}"
-        elif kind == 'ai_scan_summary':
-            sid = 'ai_probability'
-            active = int(payload.get('active_markets', 0))
-            target = int(payload.get('target_markets', 0))
-            evaluated = int(payload.get('evaluated_markets', 0))
-            triggered = int(payload.get('triggered_signals', 0))
-            reason = f"活跃 {active} 市场，目标 {target}，本轮评估 {evaluated}，触发 {triggered}"
+            if kind == 'arb_scan_summary':
+                sid = 'arb_detector'
+                markets = int(payload.get('markets', 0))
+                min_buy_sum = _safe_float(payload.get('min_buy_sum', 0.0))
+                max_sell_sum = _safe_float(payload.get('max_sell_sum', 0.0))
+                buy_threshold = _safe_float(payload.get('buy_threshold', quant_signal_engine.arb_buy_threshold))
+                sell_threshold = _safe_float(payload.get('sell_threshold', quant_signal_engine.arb_sell_threshold))
+                if markets <= 0:
+                    reason = '未扫描到可用市场'
+                elif min_buy_sum >= buy_threshold and max_sell_sum <= sell_threshold:
+                    reason = (
+                        f"已扫描 {markets} 市场，最小Yes+No={min_buy_sum:.4f}，最大Yes+No={max_sell_sum:.4f}，无套利机会"
+                    )
+                else:
+                    reason = (
+                        f"已扫描 {markets} 市场，最小Yes+No={min_buy_sum:.4f}，最大Yes+No={max_sell_sum:.4f}，存在候选机会"
+                    )
+            elif kind == 'mm_scan':
+                sid = 'market_maker'
+                scanned = int(payload.get('scanned_markets', 0))
+                strict = int(payload.get('strict_candidates', 0))
+                selected = int(payload.get('selected_markets', 0))
+                reason = f"已扫描 {scanned} 市场，符合做市条件 {strict}，本轮选中 {selected}"
+            elif kind == 'ai_scan_summary':
+                sid = 'ai_probability'
+                active = int(payload.get('active_markets', 0))
+                target = int(payload.get('target_markets', 0))
+                evaluated = int(payload.get('evaluated_markets', 0))
+                triggered = int(payload.get('triggered_signals', 0))
+                reason = f"活跃 {active} 市场，目标 {target}，本轮评估 {evaluated}，触发 {triggered}"
 
-        if not sid:
-            continue
-        item = {
-            'time_utc': str(row.get('time_utc', '')),
-            'side': side,
-            'signal_type': kind,
-            'status': status,
-            'reason': reason or str(row.get('message', '')).strip() or kind,
-        }
-        _append_recent(sid, item)
+            if not sid:
+                continue
+            item = {
+                'time_utc': str(row.get('time_utc', '')),
+                'side': side,
+                'signal_type': kind,
+                'status': status,
+                'reason': reason or str(row.get('message', '')).strip() or kind,
+            }
+            _append_recent(sid, item)
     return out
 
 
@@ -3620,6 +3784,91 @@ def _format_strategy_trades(strategy_id: str, rows: list[dict[str, Any]]) -> lis
     return out
 
 
+def _short_token_label(token_id: str) -> str:
+    t = str(token_id or '').strip()
+    if not t:
+        return '-'
+    if len(t) <= 16:
+        return t
+    return f"{t[:8]}...{t[-6:]}"
+
+
+def _build_strategy_trades_light(strategy_id: str, *, limit: int = 200) -> list[dict[str, Any]]:
+    sid = str(strategy_id or '').strip()
+    if not sid:
+        return []
+    lim = max(1, min(limit, 5000))
+    fills = paper_engine.list_fills(limit=lim, strategy_id=sid)
+    out: list[dict[str, Any]] = []
+    for idx, row in enumerate(fills, start=1):
+        if not isinstance(row, dict):
+            continue
+        token_id = str(row.get('token_id', '')).strip()
+        px = _safe_float(row.get('price', 0.0))
+        qty = _safe_float(row.get('quantity', row.get('size', 0.0)))
+        notional = _safe_float(row.get('notional', px * qty))
+        out.append(
+            {
+                'id': idx,
+                'time_utc': str(row.get('time_utc', '')),
+                'side': str(row.get('side', '')).strip().upper(),
+                'market': _short_token_label(token_id),
+                'market_en': _short_token_label(token_id),
+                'market_id': '',
+                'price': px,
+                'quantity': qty,
+                'cost_usdc': notional,
+                'pnl': 0.0,
+                'decision_reason': str(row.get('source', '')).strip(),
+                'signal_id': None,
+                'signal_type': '',
+                'signal_source_text': '',
+                'signal_source_url': '',
+                'archived': False,
+            }
+        )
+    return out
+
+
+def _build_strategy_insights_light(strategy_id: str, *, limit: int = 30) -> list[dict[str, Any]]:
+    sid = str(strategy_id or '').strip()
+    if not sid:
+        return []
+    lim = max(1, min(limit, 120))
+    include_quant = sid in {'ai_probability', 'arb_detector', 'market_maker'}
+    recent = _recent_signals_by_strategy(limit=max(200, lim * 20), include_quant=include_quant).get(sid, [])
+    out: list[dict[str, Any]] = []
+    for row in recent[:lim]:
+        if not isinstance(row, dict):
+            continue
+        reason = str(row.get('reason', '')).strip()
+        signal_type = str(row.get('signal_type', '')).strip()
+        out.append(
+            {
+                'time_utc': str(row.get('time_utc', '')),
+                'market_id': '',
+                'market_name': '-',
+                'market_name_en': '-',
+                'source_title': signal_type or 'strategy_log',
+                'source_url': '',
+                'source_name': 'strategy_log',
+                'ai_probability': 0.0,
+                'confidence': 0.0,
+                'market_yes_price': 0.0,
+                'deviation': 0.0,
+                'decision': str(row.get('side', 'HOLD')).upper(),
+                'decision_reason': reason or signal_type or 'checked',
+                'execution': str(row.get('status', 'checked')),
+                'triggered': str(row.get('status', '')).lower() == 'executed',
+                'signal_status': str(row.get('status', 'checked')),
+                'model': '',
+                'signal_type': signal_type,
+                'signal_id': 0,
+            }
+        )
+    return out
+
+
 def _strategy_trade_pnl_stats(strategy_ids: list[str]) -> dict[str, dict[str, Any]]:
     ids = [str(x or '').strip() for x in strategy_ids if str(x or '').strip()]
     if not ids:
@@ -3669,7 +3918,7 @@ def _strategy_trade_pnl_stats(strategy_ids: list[str]) -> dict[str, dict[str, An
     return out
 
 
-def _strategy_runtime_rows(include_orphans: bool = False) -> list[dict[str, Any]]:
+def _strategy_runtime_rows(include_orphans: bool = False, *, sync_registry: bool = False) -> list[dict[str, Any]]:
     _migrate_workshop_strategies_once()
     cfg_rows = strategy_store.load_strategies()
     cfg_map = {x.strategy_id: x for x in cfg_rows}
@@ -3864,10 +4113,150 @@ def _strategy_runtime_rows(include_orphans: bool = False) -> list[dict[str, Any]
             }
         )
     out.sort(key=lambda x: float(x.get('total_pnl', 0.0)), reverse=True)
-    try:
-        _sync_strategy_registry(out)
-    except Exception:
-        pass
+    if sync_registry:
+        try:
+            _sync_strategy_registry(out)
+        except Exception:
+            pass
+    return out
+
+
+def _strategy_runtime_rows_light(include_orphans: bool = False) -> list[dict[str, Any]]:
+    """Fast runtime snapshot without QuantDB joins; keeps UI responsive under heavy DB write load."""
+    _migrate_workshop_strategies_once()
+    cfg_rows = strategy_store.load_strategies()
+    cfg_map = {x.strategy_id: x for x in cfg_rows}
+    paper = paper_engine.status(limit=5000)
+    leaderboard = paper.get('leaderboard', []) if isinstance(paper, dict) else []
+    perf_rows = LivePerformanceService(strategy_store.read_logs(limit=5000)).compute()
+    perf_map = {x.strategy_id: x for x in perf_rows}
+    now = datetime.now(timezone.utc)
+    q_status = quant_orchestrator.status()
+    q_cfg = q_status.get('config', {}) if isinstance(q_status, dict) else {}
+    q_running = bool(q_status.get('running', False)) if isinstance(q_status, dict) else False
+    q_started_at_utc = str(q_status.get('started_at_utc', '')) if isinstance(q_status, dict) else ''
+    q_started_dt = _parse_iso_utc(q_started_at_utc)
+
+    quant_sid_meta = {
+        'arb_detector': {'name': 'Arbitrage Detector', 'strategy_type': 'arb', 'source': 'quant'},
+        'market_maker': {'name': 'Market Maker', 'strategy_type': 'mm', 'source': 'quant'},
+        'ai_probability': {'name': 'AI Probability', 'strategy_type': 'ai', 'source': 'quant'},
+    }
+    ids: set[str] = set(cfg_map.keys())
+    ids.update(quant_sid_meta.keys())
+    if include_orphans and isinstance(leaderboard, list):
+        for row in leaderboard:
+            if not isinstance(row, dict):
+                continue
+            sid = str(row.get('strategy_id', '')).strip()
+            if sid:
+                ids.add(sid)
+
+    lb_map: dict[str, dict[str, Any]] = {}
+    if isinstance(leaderboard, list):
+        for row in leaderboard:
+            if not isinstance(row, dict):
+                continue
+            sid = str(row.get('strategy_id', '')).strip()
+            if sid:
+                lb_map[sid] = row
+
+    out: list[dict[str, Any]] = []
+    for sid in sorted(ids):
+        cfg = cfg_map.get(sid)
+        lb = lb_map.get(sid, {})
+        perf = perf_map.get(sid)
+        enabled = bool(cfg.enabled) if cfg is not None else True
+        status = 'running' if enabled else 'stopped'
+        runtime_hours = 0.0
+        running_since_utc = ''
+        if cfg is not None:
+            created_dt = _parse_iso_utc(cfg.created_at_utc)
+            if created_dt is not None:
+                running_since_utc = cfg.created_at_utc
+                runtime_hours = max(runtime_hours, _hours_since(created_dt, now))
+
+        trades = int(lb.get('trade_count', 0)) if isinstance(lb, dict) else 0
+        win_rate = float(lb.get('win_rate', 0.0)) if isinstance(lb, dict) else 0.0
+        max_dd_pct = float(lb.get('max_drawdown_pct', 0.0)) if isinstance(lb, dict) else 0.0
+        total_pnl = float(lb.get('total_pnl', 0.0)) if isinstance(lb, dict) else 0.0
+        today_pnl = float(lb.get('today_pnl', 0.0)) if isinstance(lb, dict) else 0.0
+        if perf is not None and trades <= 0:
+            trades = int(perf.trades)
+            win_rate = float(perf.win_rate)
+            max_dd_pct = float(perf.max_drawdown_pct)
+            total_pnl = float(perf.realized_pnl)
+
+        pause_reason = ''
+        stop_reason = ''
+        if sid in quant_sid_meta:
+            meta = quant_sid_meta[sid]
+            if sid == 'arb_detector':
+                enabled = bool(q_cfg.get('enable_arb', True))
+            elif sid == 'market_maker':
+                enabled = bool(q_cfg.get('enable_mm', True))
+            elif sid == 'ai_probability':
+                enabled = bool(q_cfg.get('enable_ai', True))
+            status = 'running' if q_running and enabled else ('paused' if enabled else 'stopped')
+            if status == 'running' and q_started_dt is not None:
+                running_since_utc = q_started_dt.isoformat()
+                runtime_hours = max(runtime_hours, _hours_since(q_started_dt, now))
+            elif status == 'paused':
+                pause_reason = '量化引擎未启动（点击启动策略后会自动拉起）'
+            elif status == 'stopped':
+                stop_reason = '策略开关已关闭'
+            out.append(
+                {
+                    'strategy_id': sid,
+                    'name': str(meta.get('name', sid)),
+                    'strategy_type': str(meta.get('strategy_type', 'quant')),
+                    'params': {},
+                    'enabled': enabled,
+                    'source': str(meta.get('source', 'quant')),
+                    'created_at_utc': '',
+                    'status': status,
+                    'total_pnl': total_pnl,
+                    'today_pnl': today_pnl,
+                    'win_rate': win_rate,
+                    'trade_count': trades,
+                    'max_drawdown_pct': max_dd_pct,
+                    'equity': float(lb.get('equity', 0.0)) if isinstance(lb, dict) else 0.0,
+                    'open_orders': int(lb.get('open_orders', 0)) if isinstance(lb, dict) else 0,
+                    'runtime_hours': runtime_hours,
+                    'running_since_utc': running_since_utc,
+                    'pause_reason': pause_reason,
+                    'stop_reason': stop_reason,
+                }
+            )
+            continue
+
+        if not enabled:
+            status = 'paused'
+            pause_reason = '手动暂停'
+        out.append(
+            {
+                'strategy_id': sid,
+                'name': cfg.name if cfg is not None else sid,
+                'strategy_type': cfg.strategy_type if cfg is not None else '',
+                'params': cfg.params if cfg is not None else {},
+                'enabled': enabled,
+                'source': cfg.source if cfg is not None else 'runtime',
+                'created_at_utc': cfg.created_at_utc if cfg is not None else '',
+                'status': status,
+                'total_pnl': total_pnl,
+                'today_pnl': today_pnl,
+                'win_rate': win_rate,
+                'trade_count': trades,
+                'max_drawdown_pct': max_dd_pct,
+                'equity': float(lb.get('equity', 0.0)) if isinstance(lb, dict) else 0.0,
+                'open_orders': int(lb.get('open_orders', 0)) if isinstance(lb, dict) else 0,
+                'runtime_hours': runtime_hours,
+                'running_since_utc': running_since_utc,
+                'pause_reason': pause_reason,
+                'stop_reason': stop_reason,
+            }
+        )
+    out.sort(key=lambda x: float(x.get('total_pnl', 0.0)), reverse=True)
     return out
 
 
@@ -3875,74 +4264,64 @@ for _ in range(max(1, int(market_translate_worker_count))):
     threading.Thread(target=_market_translation_worker, daemon=True).start()
 
 
+def _dashboard_index_response() -> FileResponse:
+    dashboard_index = STATIC_DIR / 'dashboard' / 'index.html'
+    if not dashboard_index.exists():
+        raise HTTPException(status_code=404, detail='dashboard 未构建，请先执行 npm run build')
+    # Avoid stale hashed bundle references causing blank pages after frontend rebuild.
+    return FileResponse(str(dashboard_index), headers={'Cache-Control': 'no-store, max-age=0'})
+
+
 @app.get('/')
 def index() -> FileResponse:
     dashboard_index = STATIC_DIR / 'dashboard' / 'index.html'
     if dashboard_index.exists():
-        return FileResponse(str(dashboard_index))
+        return _dashboard_index_response()
     return FileResponse(str(STATIC_DIR / 'index.html'))
 
 
 @app.get('/live')
 def live_page() -> FileResponse:
-    return FileResponse(str(STATIC_DIR / 'live.html'))
+    return _dashboard_index_response()
 
 
 @app.get('/paper')
 def paper_page() -> FileResponse:
     dashboard_index = STATIC_DIR / 'dashboard' / 'index.html'
     if dashboard_index.exists():
-        return FileResponse(str(dashboard_index))
+        return _dashboard_index_response()
     return FileResponse(str(STATIC_DIR / 'paper_v2.html'))
 
 
 @app.get('/dashboard')
 def dashboard_page() -> FileResponse:
-    dashboard_index = STATIC_DIR / 'dashboard' / 'index.html'
-    if not dashboard_index.exists():
-        raise HTTPException(status_code=404, detail='dashboard 未构建，请先执行 npm run build')
-    return FileResponse(str(dashboard_index))
+    return _dashboard_index_response()
 
 
 @app.get('/strategies')
 def strategies_page() -> FileResponse:
-    dashboard_index = STATIC_DIR / 'dashboard' / 'index.html'
-    if not dashboard_index.exists():
-        raise HTTPException(status_code=404, detail='dashboard 未构建，请先执行 npm run build')
-    return FileResponse(str(dashboard_index))
+    return _dashboard_index_response()
 
 
 @app.get('/history')
 def history_page() -> FileResponse:
-    dashboard_index = STATIC_DIR / 'dashboard' / 'index.html'
-    if not dashboard_index.exists():
-        raise HTTPException(status_code=404, detail='dashboard 未构建，请先执行 npm run build')
-    return FileResponse(str(dashboard_index))
+    return _dashboard_index_response()
 
 
 @app.get('/workshop')
 def workshop_page() -> FileResponse:
-    dashboard_index = STATIC_DIR / 'dashboard' / 'index.html'
-    if not dashboard_index.exists():
-        raise HTTPException(status_code=404, detail='dashboard 未构建，请先执行 npm run build')
-    return FileResponse(str(dashboard_index))
+    return _dashboard_index_response()
 
 
 @app.get('/strategy/{strategy_id}')
 def strategy_page(strategy_id: str) -> FileResponse:
     _ = strategy_id
-    dashboard_index = STATIC_DIR / 'dashboard' / 'index.html'
-    if not dashboard_index.exists():
-        raise HTTPException(status_code=404, detail='dashboard 未构建，请先执行 npm run build')
-    return FileResponse(str(dashboard_index))
+    return _dashboard_index_response()
 
 
 @app.get('/settings')
 def settings_page() -> FileResponse:
-    dashboard_index = STATIC_DIR / 'dashboard' / 'index.html'
-    if not dashboard_index.exists():
-        raise HTTPException(status_code=404, detail='dashboard 未构建，请先执行 npm run build')
-    return FileResponse(str(dashboard_index))
+    return _dashboard_index_response()
 
 
 @app.get('/quant')
@@ -3978,6 +4357,61 @@ def status() -> dict[str, Any]:
         'quant_running': bool(q.get('running', False)),
         'quant_cycle': int(q.get('cycle', 0)),
         'quant_phase': str(q.get('phase', 'idle')),
+    }
+
+
+@app.get('/api/settings/live-credentials', response_model=LiveCredentialsResponse)
+def live_credentials_get() -> LiveCredentialsResponse:
+    env_map = _read_env_file()
+    return _build_live_credentials_response(env_map)
+
+
+@app.post('/api/settings/live-credentials')
+def live_credentials_save(payload: LiveCredentialsSaveIn) -> dict[str, Any]:
+    updates: dict[str, str] = {}
+
+    if payload.live_trading_enabled is not None:
+        updates['LIVE_TRADING_ENABLED'] = 'true' if payload.live_trading_enabled else 'false'
+    if payload.live_force_ack is not None:
+        updates['LIVE_FORCE_ACK'] = 'true' if payload.live_force_ack else 'false'
+    if payload.live_max_order_usdc is not None:
+        updates['LIVE_MAX_ORDER_USDC'] = str(payload.live_max_order_usdc)
+    if payload.live_host is not None and payload.live_host.strip():
+        updates['POLYMARKET_LIVE_HOST'] = payload.live_host.strip()
+    if payload.chain_id is not None:
+        updates['POLYMARKET_CHAIN_ID'] = str(payload.chain_id)
+    if payload.signature_type is not None:
+        updates['POLYMARKET_SIGNATURE_TYPE'] = str(payload.signature_type)
+    if payload.private_key is not None and payload.private_key.strip():
+        updates['POLYMARKET_PRIVATE_KEY'] = payload.private_key.strip()
+    if payload.funder is not None and payload.funder.strip():
+        updates['POLYMARKET_FUNDER'] = payload.funder.strip()
+    if payload.api_key is not None and payload.api_key.strip():
+        updates['POLYMARKET_API_KEY'] = payload.api_key.strip()
+    if payload.api_secret is not None and payload.api_secret.strip():
+        updates['POLYMARKET_API_SECRET'] = payload.api_secret.strip()
+    if payload.api_passphrase is not None and payload.api_passphrase.strip():
+        updates['POLYMARKET_API_PASSPHRASE'] = payload.api_passphrase.strip()
+
+    if updates:
+        _update_env_file(updates)
+
+    env_map = _read_env_file()
+    resp = _build_live_credentials_response(env_map)
+    return {
+        'ok': True,
+        'message': '凭证已保存到 .env，请重启服务使配置生效',
+        'saved_keys': sorted(list(updates.keys())),
+        'credentials': resp.model_dump(),
+    }
+
+
+@app.post('/api/settings/restart-hint')
+def restart_hint() -> dict[str, Any]:
+    return {
+        'message': '凭证已保存，请手动重启服务使配置生效。',
+        'command': 'cd /Users/chenweibin/Documents/saima\\ polymarkt && ./run_live_site.sh',
+        'note': '重启后回到本页面点击"重新检测"验证配置。',
     }
 
 
@@ -5567,6 +6001,7 @@ def quant_refresh_markets(limit: int = 120, max_books: int = 400) -> Any:
             market_limit=max(10, min(limit, 2000)),
             max_books=max(20, min(max_books, 5000)),
         )
+        _enqueue_market_translations_from_rows(out.get('market_rows') if isinstance(out, dict) else None)
         return {'ok': True, **out}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -5587,6 +6022,7 @@ def quant_books(limit: int = 400) -> Any:
 @app.get('/api/markets/monitor')
 def markets_monitor(limit: int = 80) -> Any:
     rows = quant_db.list_markets(limit=max(1, min(limit, 2000)))
+    _enqueue_market_translations_from_rows(rows)
     market_ids = [str(x.get('market_id', '')).strip() for x in rows if isinstance(x, dict) and str(x.get('market_id', '')).strip()]
     trans_map = quant_db.get_market_translations(market_ids)
     out: list[dict[str, Any]] = []
@@ -5672,6 +6108,7 @@ def ai_evals(limit: int = 200) -> Any:
         (lim,),
     )
     market_rows = quant_db.list_markets(limit=2000)
+    _enqueue_market_translations_from_rows(market_rows)
     market_map = {str(x.get('market_id', '')): x for x in market_rows if isinstance(x, dict)}
     trans_map = quant_db.get_market_translations([str(x.get('market_id', '')).strip() for x in market_rows if isinstance(x, dict)])
     out: list[dict[str, Any]] = []
@@ -5940,8 +6377,8 @@ def cancel_all(confirm_live: bool = False) -> Any:
 
 @app.get('/api/strategies')
 def list_strategies() -> Any:
-    rows = _strategy_runtime_rows()
-    recent_map = _recent_signals_by_strategy(limit=3000)
+    rows = _strategy_runtime_rows_light()
+    recent_map = _recent_signals_by_strategy(limit=3000, include_quant=False)
     llm = _get_llm_health_state()
     ai_warn = not bool(llm.get('ok', False))
     for row in rows:
@@ -5957,52 +6394,22 @@ def list_strategies() -> Any:
 def account_summary() -> Any:
     paper = paper_engine.status(limit=5000)
     totals = (paper.get('totals', {}) if isinstance(paper, dict) else {}) or {}
-    runtime_rows = _strategy_runtime_rows()
+    runtime_rows = _strategy_runtime_rows_light()
     active = sum(1 for x in runtime_rows if str(x.get('status', '')) == 'running')
     total = len(runtime_rows)
-    today_pnl = sum(_safe_float(x.get('today_pnl', 0.0)) for x in runtime_rows if isinstance(x, dict))
+    today_pnl = _safe_float(totals.get('today_pnl', 0.0))
     cumulative_pnl = sum(_safe_float(x.get('total_pnl', 0.0)) for x in runtime_rows if isinstance(x, dict))
 
-    runtime_ids = {str(x.get('strategy_id', '')).strip() for x in runtime_rows if isinstance(x, dict)}
-    leaderboard = paper.get('leaderboard', []) if isinstance(paper, dict) else []
-    lb_initial_map: dict[str, float] = {}
-    if isinstance(leaderboard, list):
-        for row in leaderboard:
-            if not isinstance(row, dict):
-                continue
-            sid = str(row.get('strategy_id', '')).strip()
-            if not sid:
-                continue
-            lb_initial_map[sid] = _safe_float(row.get('initial_cash', 0.0))
-    visible_initial = 0.0
-    for sid in runtime_ids:
-        visible_initial += lb_initial_map.get(sid, 0.0)
+    visible_initial = _safe_float(totals.get('initial_cash', 0.0))
     if visible_initial <= 1e-9:
         visible_initial = _safe_float(totals.get('initial_cash', 0.0))
     balance_usdc = visible_initial + cumulative_pnl
 
     risk_status = 'normal'
-    acct_risk = quant_db.account_risk()
-    if not bool(int(acct_risk.get('trading_enabled', 1))):
-        risk_status = 'danger'
-    elif today_pnl <= float(quant_risk_engine.account_daily_loss_limit) * 0.7:
+    if today_pnl <= float(quant_risk_engine.account_daily_loss_limit) * 0.7:
         risk_status = 'warning'
 
-    events = quant_db.list_events(limit=400)
-    alert_kinds = {'cycle_error', 'signal_failed', 'signal_blocked_live_gate', 'signal_blocked_race'}
-    now = datetime.now(timezone.utc)
-    day_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
     alerts = 0
-    for row in events:
-        if not isinstance(row, dict):
-            continue
-        kind = str(row.get('kind', ''))
-        if kind not in alert_kinds:
-            continue
-        ts = _parse_iso_utc(row.get('time_utc'))
-        if ts is None or ts < day_start:
-            continue
-        alerts += 1
 
     return {
         'balance_usdc': balance_usdc,
@@ -6145,7 +6552,7 @@ def strategy_overview(strategy_id: str, insight_limit: int = 30, pnl_limit: int 
     sid = str(strategy_id or '').strip()
     if not sid:
         raise HTTPException(status_code=400, detail='strategy_id 不能为空')
-    rows = _strategy_runtime_rows(include_orphans=True)
+    rows = _strategy_runtime_rows_light(include_orphans=True)
     target = None
     for row in rows:
         if str(row.get('strategy_id', '')) == sid:
@@ -6167,29 +6574,10 @@ def strategy_overview(strategy_id: str, insight_limit: int = 30, pnl_limit: int 
         metrics['runtime_hours'] = float(target.get('runtime_hours', 0.0))
         metrics['running_since_utc'] = str(target.get('running_since_utc', ''))
 
-    trade_rows = _materialize_strategy_trades(sid, limit=220)
-    trades = _format_strategy_trades(sid, trade_rows[:200])
-    insights = _build_strategy_ai_insights(sid, limit=max(1, min(insight_limit, 120)))
-    versions = _strategy_versions_payload(sid, limit=60)
-    history_rows = quant_db.list_param_history(sid, limit=120)
+    trades = _build_strategy_trades_light(sid, limit=200)
+    insights = _build_strategy_insights_light(sid, limit=max(1, min(insight_limit, 120)))
+    versions: list[dict[str, Any]] = []
     param_history: list[dict[str, Any]] = []
-    for row in history_rows:
-        if not isinstance(row, dict):
-            continue
-        change = {}
-        try:
-            change = json.loads(str(row.get('change_json', '{}')))
-        except Exception:
-            change = {}
-        param_history.append(
-            {
-                'id': int(row.get('id', 0)),
-                'changed_at': str(row.get('changed_at', '')),
-                'changed_by': str(row.get('changed_by', '')),
-                'note': str(row.get('note', '')),
-                'change': change,
-            }
-        )
     return {
         'strategy': target,
         'metrics': metrics,
@@ -6207,7 +6595,7 @@ def strategy_insights(strategy_id: str, limit: int = 30) -> Any:
     sid = str(strategy_id or '').strip()
     if not sid:
         raise HTTPException(status_code=400, detail='strategy_id 不能为空')
-    rows = _build_strategy_ai_insights(sid, limit=max(1, min(limit, 120)))
+    rows = _build_strategy_insights_light(sid, limit=max(1, min(limit, 120)))
     return {'strategy_id': sid, 'count': len(rows), 'rows': rows, 'updated_at_utc': _now_utc_iso()}
 
 
@@ -6216,8 +6604,7 @@ def strategy_trades(strategy_id: str, limit: int = 200) -> Any:
     sid = str(strategy_id or '').strip()
     if not sid:
         raise HTTPException(status_code=400, detail='strategy_id 不能为空')
-    rows = _materialize_strategy_trades(sid, limit=max(1, min(limit, 2000)))
-    out = _format_strategy_trades(sid, rows[: max(1, min(limit, 2000))])
+    out = _build_strategy_trades_light(sid, limit=max(1, min(limit, 2000)))
     return {'strategy_id': sid, 'count': len(out), 'rows': out, 'updated_at_utc': _now_utc_iso()}
 
 

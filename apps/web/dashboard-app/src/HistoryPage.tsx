@@ -62,6 +62,12 @@ export default function HistoryPage() {
         </div>
         <div className="flex items-center gap-2">
           <a href="/" className="rounded-lg border border-dashboard-line bg-[#111827] px-3 py-2 hover:border-[#4b5563]">仪表盘</a>
+          <a
+            href="/live"
+            className="rounded-lg border border-orange-500/50 bg-[#111827] px-3 py-2 hover:border-orange-400 inline-flex items-center gap-2 text-orange-300"
+          >
+            🔴 实盘中心
+          </a>
           <a href="/workshop" className="rounded-lg border border-dashboard-line bg-[#111827] px-3 py-2 hover:border-[#4b5563]">工坊</a>
           <a href="/strategies" className="rounded-lg border border-dashboard-line bg-[#111827] px-3 py-2 hover:border-[#4b5563]">策略管理</a>
           <a href="/settings" className="rounded-lg border border-dashboard-line bg-[#111827] px-3 py-2 hover:border-[#4b5563]">设置</a>

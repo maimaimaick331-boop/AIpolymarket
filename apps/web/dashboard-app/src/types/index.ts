@@ -360,3 +360,79 @@ export interface StrategyVersionRow {
     param_keys?: string[];
   };
 }
+
+export interface LiveStatus {
+  live_trading_enabled: boolean;
+  live_force_ack: boolean;
+  live_max_order_usdc: number;
+  has_private_key: boolean;
+  has_funder: boolean;
+  has_api_creds: boolean;
+  host: string;
+  chain_id: number;
+  signature_type: number;
+  paper_use_market_ws: boolean;
+  market_ws_endpoint: string;
+  quant_running: boolean;
+  quant_cycle: number;
+  quant_phase: string;
+}
+
+export interface LiveGateRow {
+  strategy_id: string;
+  eligible: boolean;
+  runtime_hours: number;
+  fills_count: number;
+  win_rate: number;
+  pnl_total: number;
+  reasons: string[];
+}
+
+export interface LiveGateResponse {
+  eligible_count: number;
+  total_count: number;
+  rows: LiveGateRow[];
+  thresholds: {
+    min_hours: number;
+    min_win_rate: number;
+    min_pnl: number;
+    min_fills: number;
+  };
+}
+
+export interface LiveOrderRow {
+  id?: string;
+  order_id?: string;
+  time?: string;
+  timestamp?: string;
+  side: string;
+  price: number | string;
+  size: number | string;
+  original_size?: number | string;
+  status: string;
+  token_id?: string;
+  market?: string;
+  asset_id?: string;
+  type?: string;
+}
+
+export interface LiveTradeRow {
+  id?: string;
+  time?: string;
+  timestamp?: string;
+  side: string;
+  price: number | string;
+  size: number | string;
+  token_id?: string;
+  asset_id?: string;
+  market?: string;
+  fee_rate_bps?: number;
+  status?: string;
+}
+
+export interface BotStatus {
+  running: boolean;
+  token_id: string;
+  interval_sec: number;
+  tick: number;
+}

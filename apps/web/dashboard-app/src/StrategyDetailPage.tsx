@@ -62,6 +62,13 @@ function normalizedDecision(decision: string): 'buy' | 'sell' | 'hold' {
   return 'hold';
 }
 
+function displayMarketName(zh?: string, en?: string, fallback?: string): string {
+  const zhText = String(zh || '').trim();
+  const enText = String(en || '').trim();
+  if (zhText && (zhText !== enText || /[\u4e00-\u9fff]/.test(zhText))) return zhText;
+  return zhText || enText || String(fallback || '').trim() || '-';
+}
+
 export default function StrategyDetailPage() {
   const strategyId = useMemo(() => decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || ''), []);
   const [overview, setOverview] = useState<StrategyOverviewResponse | null>(null);
@@ -83,8 +90,66 @@ export default function StrategyDetailPage() {
   const loadData = useCallback(async () => {
     if (!strategyId) return;
     try {
-      const ov = await apiGet<StrategyOverviewResponse>(`/strategy/${encodeURIComponent(strategyId)}/overview?insight_limit=40&pnl_limit=5000`);
-      setOverview(ov);
+      const sid = encodeURIComponent(strategyId);
+      const [ov, listResp] = await Promise.all([
+        apiGet<StrategyOverviewResponse>(`/strategy/${sid}/overview?insight_limit=40&pnl_limit=5000`),
+        apiGet<{ rows: StrategyRow[] }>('/strategies').catch(() => ({ rows: [] })),
+      ]);
+
+      const listRows = Array.isArray(listResp?.rows) ? listResp.rows : [];
+      const listRow = listRows.find((x) => String(x.strategy_id || '') === strategyId);
+
+      const merged: StrategyOverviewResponse = {
+        ...ov,
+        strategy: (listRow ? { ...ov.strategy, ...listRow } : ov.strategy) as StrategyRow,
+        metrics: {
+          ...(ov.metrics || {}),
+          trade_count:
+            Number(ov?.metrics?.trade_count || 0) > 0
+              ? Number(ov.metrics?.trade_count || 0)
+              : Number(listRow?.trade_count || ov?.metrics?.trade_count || 0),
+          runtime_hours:
+            Number(ov?.metrics?.runtime_hours || 0) > 0
+              ? Number(ov.metrics?.runtime_hours || 0)
+              : Number(listRow?.runtime_hours || ov?.metrics?.runtime_hours || 0),
+          win_rate:
+            Number(ov?.metrics?.win_rate || 0) > 0
+              ? Number(ov.metrics?.win_rate || 0)
+              : Number(listRow?.win_rate || ov?.metrics?.win_rate || 0),
+          total_pnl:
+            Math.abs(Number(ov?.metrics?.total_pnl || 0)) > 1e-12
+              ? Number(ov.metrics?.total_pnl || 0)
+              : Number(listRow?.total_pnl || ov?.metrics?.total_pnl || 0),
+          max_drawdown_pct:
+            Number(ov?.metrics?.max_drawdown_pct || 0) > 0
+              ? Number(ov.metrics?.max_drawdown_pct || 0)
+              : Number(listRow?.max_drawdown_pct || ov?.metrics?.max_drawdown_pct || 0),
+        },
+      };
+
+      if (!Array.isArray(merged.trades) || merged.trades.length === 0) {
+        try {
+          const tr = await apiGet<{ rows?: StrategyTradeRow[] }>(`/strategy/${sid}/trades?limit=200`);
+          if (Array.isArray(tr?.rows) && tr.rows.length > 0) {
+            merged.trades = tr.rows;
+          }
+        } catch {
+          // keep overview payload
+        }
+      }
+
+      if (!Array.isArray(merged.insights) || merged.insights.length === 0) {
+        try {
+          const ins = await apiGet<{ rows?: StrategyOverviewResponse['insights'] }>(`/strategy/${sid}/insights?limit=40`);
+          if (Array.isArray(ins?.rows) && ins.rows.length > 0) {
+            merged.insights = ins.rows;
+          }
+        } catch {
+          // keep overview payload
+        }
+      }
+
+      setOverview(merged);
       setError('');
     } catch (err) {
       setError((err as Error).message || '加载失败');
@@ -228,7 +293,7 @@ export default function StrategyDetailPage() {
       if (insightDecisionFilter !== 'all' && decision !== insightDecisionFilter) return false;
       if (insightTriggeredOnly && !row.triggered) return false;
       if (!key) return true;
-      const blob = `${row.market_name || ''} ${row.source_title || ''} ${row.decision_reason || ''}`.toLowerCase();
+      const blob = `${row.market_name || ''} ${row.market_name_en || ''} ${row.source_title || ''} ${row.decision_reason || ''}`.toLowerCase();
       return blob.includes(key);
     });
   }, [insights, insightSignalFilter, insightDecisionFilter, insightTriggeredOnly, insightSearch]);
@@ -376,6 +441,7 @@ export default function StrategyDetailPage() {
             const isOpen = expanded[key] ?? idx < 4;
             const deviationPct = Number(row.deviation || 0) * 100;
             const confPct = Number(row.confidence || 0) * 100;
+            const marketTitle = displayMarketName(row.market_name, row.market_name_en, row.source_title);
             return (
               <article key={key} className="rounded-lg border border-dashboard-line bg-[#111827] text-sm">
                 <button
@@ -385,7 +451,7 @@ export default function StrategyDetailPage() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <div className="text-dashboard-text truncate">
-                        🕐 {toLocalTime(row.time_utc)} | {row.signal_type || 'signal'} | 📰 {row.source_title || row.market_name}
+                        🕐 {toLocalTime(row.time_utc)} | {row.signal_type || 'signal'} | 📰 {marketTitle}
                       </div>
                       <div className="text-xs text-dashboard-muted mt-1">
                         AI {(Number(row.ai_probability || 0) * 100).toFixed(1)}% | 市场 {Number(row.market_yes_price || 0).toFixed(3)} | 偏差 {deviationPct.toFixed(2)}% | 置信度 {confPct.toFixed(1)}%

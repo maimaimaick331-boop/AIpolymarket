@@ -34,6 +34,13 @@ function riskStyle(status: string) {
   return { text: '正常', cls: 'text-dashboard-good', icon: <ShieldAlert size={16} /> };
 }
 
+function displayMarketName(zh?: string, en?: string, fallback?: string): string {
+  const zhText = String(zh || '').trim();
+  const enText = String(en || '').trim();
+  if (zhText && (zhText !== enText || /[\u4e00-\u9fff]/.test(zhText))) return zhText;
+  return zhText || enText || String(fallback || '').trim() || '-';
+}
+
 interface AppProps {
   initialSettingsOpen?: boolean;
 }
@@ -211,6 +218,12 @@ export default function App({ initialSettingsOpen = false }: AppProps) {
         <div className="flex items-center gap-3">
           <div className="text-xs text-dashboard-muted">最近刷新: {refreshAt || '-'}</div>
           <a
+            href="/live"
+            className="rounded-lg border border-orange-500/50 bg-[#111827] px-3 py-2 hover:border-orange-400 inline-flex items-center gap-2 text-orange-300"
+          >
+            🔴 实盘中心
+          </a>
+          <a
             href="/strategies"
             className="rounded-lg border border-dashboard-line bg-[#111827] px-3 py-2 hover:border-[#4b5563] inline-flex items-center gap-2"
           >
@@ -332,7 +345,9 @@ export default function App({ initialSettingsOpen = false }: AppProps) {
               <tbody>
                 {(markets || []).slice(0, 30).map((m) => (
                   <tr key={m.market_id} className="border-t border-dashboard-line">
-                    <td className="px-2 py-2 max-w-[380px] truncate" title={m.name_en || m.name}>{m.name}</td>
+                    <td className="px-2 py-2 max-w-[380px] truncate" title={m.name_en || m.name}>
+                      {displayMarketName(m.name, m.name_en, m.market_id)}
+                    </td>
                     <td className="px-2 py-2">{Number(m.mid_price || 0).toFixed(4)}</td>
                     <td className={`px-2 py-2 ${m.spread >= 0.04 ? 'text-dashboard-good font-semibold' : ''}`}>{Number(m.spread_pct || 0).toFixed(2)}%</td>
                     <td className="px-2 py-2">{Number(m.volume_24h || 0).toFixed(0)}</td>
@@ -364,7 +379,9 @@ export default function App({ initialSettingsOpen = false }: AppProps) {
               <tbody>
                 {(aiRows || []).slice(0, 20).map((r) => (
                   <tr key={`${r.market_id}-${r.evaluated_at_utc}`} className="border-t border-dashboard-line">
-                    <td className="px-2 py-1.5 max-w-[160px] truncate" title={r.name}>{r.name}</td>
+                    <td className="px-2 py-1.5 max-w-[160px] truncate" title={r.name_en || r.name}>
+                      {displayMarketName(r.name_zh || r.name, r.name_en, r.market_id)}
+                    </td>
                     <td className="px-2 py-1.5">{Number(r.market_yes_mid || 0).toFixed(3)}</td>
                     <td className="px-2 py-1.5">{Number(r.ai_probability || 0).toFixed(3)}</td>
                     <td className={`px-2 py-1.5 ${r.triggered ? 'text-dashboard-good font-semibold' : ''}`}>{(Number(r.deviation || 0) * 100).toFixed(1)}%</td>
@@ -406,7 +423,9 @@ export default function App({ initialSettingsOpen = false }: AppProps) {
                       {String(t.side).toUpperCase()}
                     </span>
                   </td>
-                  <td className="px-3 py-2 max-w-[460px] truncate" title={t.market_name_en || t.market_name}>{t.market_name}</td>
+                  <td className="px-3 py-2 max-w-[460px] truncate" title={t.market_name_en || t.market_name}>
+                    {displayMarketName(t.market_name, t.market_name_en, t.token_id)}
+                  </td>
                   <td className="px-3 py-2">{Number(t.price || 0).toFixed(4)}</td>
                   <td className="px-3 py-2">{Number(t.quantity || 0).toFixed(4)}</td>
                   <td className="px-3 py-2 max-w-[460px] truncate" title={t.decision_reason || ''}>{t.decision_reason || '-'}</td>

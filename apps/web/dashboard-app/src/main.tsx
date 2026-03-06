@@ -5,10 +5,14 @@ import WorkshopPage from './WorkshopPage';
 import StrategyDetailPage from './StrategyDetailPage';
 import StrategyLifecyclePage from './StrategyLifecyclePage';
 import HistoryPage from './HistoryPage';
+import LiveTradingPage from './LiveTradingPage';
 import './index.css';
 
 function CurrentPage() {
   const path = window.location.pathname;
+  if (path.startsWith('/live')) {
+    return <LiveTradingPage />;
+  }
   if (path.startsWith('/history')) {
     return <HistoryPage />;
   }
