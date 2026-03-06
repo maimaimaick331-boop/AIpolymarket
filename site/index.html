@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Polymarket 临时站点</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: #111a2b;
+        --line: #22324f;
+        --text: #e6edf8;
+        --muted: #9db0cf;
+        --good: #4ade80;
+        --warn: #f59e0b;
+        --bad: #f87171;
+        --brand: #38bdf8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        background:
+          radial-gradient(900px 300px at 8% -10%, #12305c 0, transparent 70%),
+          radial-gradient(900px 320px at 95% -20%, #0f4d4a 0, transparent 75%),
+          var(--bg);
+        color: var(--text);
+      }
+      .wrap { max-width: 1080px; margin: 28px auto; padding: 0 16px 40px; }
+      .hero {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: linear-gradient(135deg, #12243f 0%, #1c3b69 55%, #15544f 100%);
+        padding: 22px;
+      }
+      h1 { margin: 0 0 10px; font-size: 32px; }
+      p { margin: 0; color: #d4e4fb; line-height: 1.7; }
+      .btns { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+      .btn {
+        display: inline-block;
+        text-decoration: none;
+        color: #fff;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        padding: 9px 12px;
+        font-weight: 700;
+      }
+      .btn.brand { background: #0b7db1; }
+      .btn.dark { background: #0f172a; border-color: #34527a; color: #dbeafe; }
+      .grid {
+        margin-top: 14px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--card);
+        padding: 12px;
+      }
+      .card h3 { margin: 0 0 8px; font-size: 17px; }
+      .meta { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.8; }
+      .badge {
+        display: inline-block;
+        margin-right: 8px;
+        margin-top: 6px;
+        border-radius: 999px;
+        padding: 2px 9px;
+        font-size: 12px;
+        border: 1px solid var(--line);
+      }
+      .ok { color: var(--good); }
+      .warn { color: var(--warn); }
+      .bad { color: var(--bad); }
+      .tip {
+        margin-top: 12px;
+        border: 1px solid #5c4a1f;
+        border-radius: 12px;
+        background: #2b220d;
+        padding: 10px 12px;
+        color: #ffd899;
+      }
+      code {
+        background: #0a1426;
+        border: 1px solid #24385a;
+        color: #b7cff4;
+        border-radius: 8px;
+        padding: 2px 7px;
+      }
+      @media (max-width: 920px) {
+        .grid { grid-template-columns: 1fr; }
+        h1 { font-size: 26px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="hero">
+        <h1>AI Polymarket 临时站点</h1>
+        <p>
+          这是基于仓库自动发布的临时页面，用于演示项目结构、功能范围和本地启动方式。
+          实盘/模拟交易功能依赖后端服务，不在 GitHub Pages 上直接执行。
+        </p>
+        <div class="btns">
+          <a class="btn brand" href="https://github.com/maimaimaick331-boop/AIpolymarket" target="_blank" rel="noreferrer">打开 GitHub 仓库</a>
+          <a class="btn dark" href="https://github.com/maimaimaick331-boop/AIpolymarket/actions" target="_blank" rel="noreferrer">查看发布流水线</a>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h3>核心目标</h3>
+          <div>模型接入 → 策略生成 → 模拟盘验证 → 实盘灰度执行。</div>
+          <div class="meta">
+            <span class="badge ok">策略工坊</span>
+            <span class="badge ok">策略生命周期</span>
+            <span class="badge ok">实盘中心</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>本地运行</h3>
+          <div>在本机启动完整系统（前后端一体）：</div>
+          <div class="meta"><code>./run_live_site.sh</code></div>
+          <div class="meta">默认访问：<code>http://127.0.0.1:8780</code></div>
+        </article>
+
+        <article class="card">
+          <h3>当前状态</h3>
+          <div class="meta">
+            <span class="badge ok">仓库已同步</span>
+            <span class="badge warn">临时展示页</span>
+            <span class="badge bad">无后端执行</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="tip">
+        说明：如果你要把“完整可交易网站”上线到公网，需要把 FastAPI 后端部署到云主机，并配置反向代理与 HTTPS，
+        再把前端 API 指向该后端地址。
+      </section>
+    </div>
+  </body>
+</html>
+
